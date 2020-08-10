@@ -30,6 +30,21 @@ ConvertNormalToDipAndDipDir<-function(x) {
   
 }
 
+
+RZA<-function (scan, deg = FALSE){
+  colnames(scan)[1:3] <- c("x","y","z")
+  scan$r <- sqrt(scan$x^2 + scan$y^2 +scan$z^2)
+  scan$inc <- ((acos(scan$z/scan$r)))
+  scan$az <- atan2(scan$y,scan$x)
+  
+  if(deg==TRUE){
+    scan$inc<-scan$inc*(180/pi)
+    scan$az<-scan$az*(180/pi)
+  }
+  
+  return(scan)
+}
+
 scatter<-function(dat){
   # time<-Sys.time()
   dat[,14:16]<-dat[,1:3]/sqrt(rowSums(dat[,1:3]^2))

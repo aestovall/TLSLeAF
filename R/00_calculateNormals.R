@@ -1,8 +1,6 @@
 #CREATE Subsampled point cloud and SURFACE MODELS
 print(paste("Input gridded point cloud and estimate normals"))
 
-input_file = list.files(pattern = "ptx",recursive = TRUE)
-
 print(paste("Processing", input_file))
 termId<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
                   "-SILENT",

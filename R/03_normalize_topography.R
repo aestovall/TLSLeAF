@@ -7,4 +7,7 @@ time<-Sys.time()
 if(correct.topography == TRUE) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
 print(Sys.time()-time)#
 
-fwrite(na.exclude(dat), file = gsub(".asc","_angles_topocorrect.asc",output_file), sep = " ")
+fwrite(na.exclude(dat), 
+       file = file.path("../output",
+                        gsub("./","",gsub(".asc","_angles_topocorrect.asc",output_file))), 
+       sep = " ")
