@@ -79,3 +79,9 @@ The `figures` folder should also include a LAD figure with beta parameters from 
 ![LAD](LAD.png)
 
 
+
+## How fast is it?
+
+TLSLeAF is an efficient means of calculating single-scan leaf angles and LADs. One can expect processing times in line with the figure below on a consumer-grade machine.
+
+![Processing_speed](Processing_speed.png)
