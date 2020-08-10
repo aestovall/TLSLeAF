@@ -1,3 +1,5 @@
+![TLSLeAF](TLSLeAF.png)
+
 # TLSLeAF
 Algorithms described in "PAPER TITLE" (Stovall et al. Submitted) for generating leaf angle distributions (LADs) from single-scan terrestrial laser scanning (TLS) data.
 
