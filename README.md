@@ -74,5 +74,8 @@ source('../R/06_fit_beta.R')
 ```
 
 Success (hopefully)! You will find all of the processed files in the `output` directory.
-The `figures` folder should also include a LAD figure with beta parameters from TLSLeAF.
+The `figures` folder should also include a LAD figure with beta parameters from TLSLeAF:
+
+![LAD](LAD.pdf)
+
 
