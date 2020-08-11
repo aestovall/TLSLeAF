@@ -50,5 +50,3 @@ file.remove(output_file, gsub(".asc","_angles.asc",output_file),
             gsub(".asc","_0_50_NORM.asc",c2c.file),
             gsub(".asc","_0_75_NORM.asc",c2c.file))
 gc()
-
-setwd("..")
