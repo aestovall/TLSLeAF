@@ -24,8 +24,8 @@ ggplot(LAD_lim,aes(x=a))+
   xlab("TLS-Measured Leaf Angle (degrees)")+
   ylab("Density")
 
-ggsave(paste("LAD", ".pdf", sep=""),path = "figures", 
-       width = 3.75, height = 3.75, units = "in")
+ggsave(gsub("input","figures",gsub(".asc","_LAD.png",output_file)), 
+       width = 3.75, height = 3.75, units = "in", dpi=300)
 
 print(rbind(paste( "The alpha and beta parameters are:"),
 paste("alpha=", param[1,1]),

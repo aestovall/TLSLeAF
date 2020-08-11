@@ -49,6 +49,4 @@ if(PATH & OS=='mac') cloudcompare<-'cloudcompare' else cloudcompare <- cc_dir
 if(PATH & OS!='mac') cloudcompare<-'cloudcompare' else cloudcompare <- cc_dir
 
 
-
-
 if(OS=="mac") run<-function(x) rstudioapi::terminalExecute(x) else run<-function(x) shell(x)
