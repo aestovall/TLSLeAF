@@ -23,25 +23,25 @@ output_file = gsub(".ptx",".asc", input_file)
 center<-fread(input_file, nrows=4, header=FALSE)[1,]
 
 #Calculate normals for gridded TLS point cloud
-source('../R/00_calculateNormals.R')
+source('R/00_calculateNormals.R')
 
 #Calculate scattering angle and leaf angle
-source('../R/01_calculateAngle.R')
+source('R/01_calculateAngle.R')
 
 #Classify wood and leaf from random forest classifier
-source('../R/02_classify_wood_leaves.R')
+source('R/02_classify_wood_leaves.R')
 
 #Correct topography and calculate the LAD and vertical LAD
-source('../R/03_normalize_topography.R')
+source('R/03_normalize_topography.R')
 
 # leaf angle voxelation and density normalization
-source('../R/04_voxelize.R')
+source('R/04_voxelize.R')
 
 #simulate LAD from voxel statistics
-source('../R/05_simulate_LAD.R')
+source('R/05_simulate_LAD.R')
 
 #fit beta function and get beta parameters from LAD
-source('../R/06_fit_beta.R')
+source('R/06_fit_beta.R')
 
 #Remove unecessary files created during processing and free memory
 file.remove(output_file, gsub(".asc","_angles.asc",output_file),

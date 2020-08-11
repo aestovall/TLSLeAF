@@ -1,7 +1,5 @@
 #FIT BETA DISTRIBUTION
-library(fitdistrplus)
-LAD_lim<-data.table::fread(file.path("../output",
-                                     gsub("./","",gsub(".asc","_LAD.txt",output_file))), 
+LAD_lim<-data.table::fread(gsub("input","output",gsub(".asc","_LAD.txt",output_file)), 
                                 header = TRUE)
 m<-fitdist(LAD_lim$a/90,
            'beta',
@@ -26,7 +24,7 @@ ggplot(LAD_lim,aes(x=a))+
   xlab("TLS-Measured Leaf Angle (degrees)")+
   ylab("Density")
 
-ggsave(paste("LAD", ".pdf", sep=""),path = "../figures", 
+ggsave(paste("LAD", ".pdf", sep=""),path = "figures", 
        width = 3.75, height = 3.75, units = "in")
 
 print(rbind(paste( "The alpha and beta parameters are:"),
