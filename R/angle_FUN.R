@@ -104,10 +104,10 @@ LAvoxel<-function(dat, res = 0.1){
   las@data$dip_deg<-dat$dip_deg
   las@data$count<-1
   
-  voxels<-grid_metrics3d(las, mean(dip_deg), res=res)
+  voxels<-voxel_metrics(las, mean(dip_deg), res=res)
   colnames(voxels)[4]<-"dip_dir"
-  voxels$dip_dir_sd<-grid_metrics3d(las, sd(dip_deg), res=res)[,4]
-  voxels$n<-grid_metrics3d(las, sum(count), res=res)[,4]
+  voxels$dip_dir_sd<-voxel_metrics(las, sd(dip_deg), res=res)[,4]
+  voxels$n<-voxel_metrics(las, sum(count), res=res)[,4]
   
   return(voxels)
 }

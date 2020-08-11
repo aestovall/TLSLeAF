@@ -3,7 +3,7 @@ rm(dat)
 gc()
 
 print(paste("Processing", input_file))
-termId<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
+run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
                   "-SILENT",
                   "-C_EXPORT_FMT", "ASC", "-PREC", 6, #Set asc as export format
                   "-NO_TIMESTAMP",
@@ -17,15 +17,6 @@ termId<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must 
                   "-OCTREE_NORMALS", 0.75,
                   "-SAVE_CLOUDS", "FILE", gsub(".asc","_0_75_NORM.asc",c2c.file),
                   sep = " "))
-
-while (is.null(rstudioapi::terminalExitCode(termId))) {
-  Sys.sleep(0.1)
-}
-
-result <- rstudioapi::terminalBuffer(termId)
-
-# Delete the buffer and close the session in the IDE
-rstudioapi::terminalKill(termId)
 
 #######IMPORT NORMALS#########
 dat<-data.table::fread(gsub(".asc","_0_10_NORM.asc",c2c.file),header = FALSE)
