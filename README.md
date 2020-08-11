@@ -1,7 +1,9 @@
 ![TLSLeAF](TLSLeAF.png)
 
 # TLSLeAF - Terrestrial Laser Scanning Leaf Angle Function
-Algorithms described in "Automatic leaf angle estimates from single-scan terrestrial laser scanning with TLSLeAF" (Stovall et al. Submitted) for generating leaf angle distributions (LADs) from single-scan terrestrial laser scanning (TLS) data.
+Algorithms described in "Automatic leaf angle estimates from single-scan terrestrial laser scanning with TLSLeAF" (Stovall et al. Submitted) for generating leaf angle distributions (LADs) from single-scan terrestrial laser scanning (TLS) data. 
+
+TLSLeAF is based in the R programming language and takes advantage of CloudCompare commandline tools. 
 
 ## INITIAL SETUP
 
