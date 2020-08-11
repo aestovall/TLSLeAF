@@ -30,7 +30,7 @@ Add your operating system type and specify the path to CloudCompare. Further tes
 Two setup option are available: 
 
 ```{r,echo=FALSE}
-SCATTER_LIM<-85 #threshold of scattering angle to remove
+SCATTER_LIM = 85 #threshold of scattering angle to remove
 correct.topography = TRUE #topographically normalize the voxels?
 ```
 `SCATTER_LIM` is a filter based on the angle of reflection of the laser pulse, relative to the normal of the leaf surface. For instance, a 0 degree scattering angle would be found for surfaces perpendicular to the laser trajectory. A 90 degree angle would be a surface parallel to the laser trajectory. The algorithm filters scattering angles greater than 85 degrees by default.
