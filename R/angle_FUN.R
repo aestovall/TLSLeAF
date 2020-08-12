@@ -97,7 +97,7 @@ normalize_topography<-function(dat, res = 5){
   return(las@data$Z)
 }
 
-LAvoxel<-function(dat, res = 0.1){
+LAvoxel<-function(dat,res = 0.1){
   las<-LAS(dat[,1:3])
   crs(las)<-"+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs"
   las@data$Z<-dat$z_cor
@@ -123,4 +123,216 @@ sim_LAD<-function(x,sd){
   return(data.frame(a=do.call(rbind, sim_ls)))
   close(pb)
 }
+
+normalCalc<-function(input_file){
+  
+  print(paste("Input gridded point cloud and estimate normals"))
+  print(paste("Processing", input_file))
+  
+  term<-1
+  
+  term<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
+            "-SILENT",
+            "-C_EXPORT_FMT", "ASC", "-PREC", 6, #Set asc as export format
+            "-NO_TIMESTAMP",
+            "-COMPUTE_NORMALS",
+            "-O", input_file, #open the subsampled file
+            "-SAVE_CLOUDS",
+            sep = " "))
+  
+  while (term==1) sys.sleep(10)
+}
+
+
+angleCalc<-function(dat, center, SCATTER_LIM=85){
+  #column naming
+  colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
+  
+  #Adjust coordinates to scanner center
+  dat[,1:3]<-dat[,1:3]-t(c(center))
+  
+  #ensures all data are numeric, avoiding errors
+  dat<-as.data.frame(dat)
+  for(ii in 1:length(dat)) if (class(dat[[1,ii]])=="character") dat[,ii]<- as.numeric( dat[,ii] )
+  
+  #calculate the radius, zenith, and azimuth angles from XYZ coordinates
+  dat<-RZA(dat)
+  
+  # estimate scattering angle and filter, removing steep angles
+  dat$scatter<-scatter(dat)
+  dat<-dat[dat$scatter<=SCATTER_LIM,]
+  dat<-na.omit(dat)
+  
+  #Convert normals to leaf orientation and leaf angle
+  dat<-cbind(dat[,1:3],
+             ConvertNormalToDipAndDipDir(dat[,8:10])[,2])
+  return(dat)
+
+}
+
+classMetricCalc<-function(c2c.file, SS=0.02, scales=c(0.1,0.5,0.75)){
+  print(paste("Processing", c2c.file))
+
+  term<-1
+  
+  term<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
+            "-SILENT",
+            "-C_EXPORT_FMT", "ASC", "-PREC", 6, #Set asc as export format
+            "-NO_TIMESTAMP",
+            "-AUTO_SAVE OFF",
+            "-O", c2c.file, #open the subsampled file
+            "-SS SPATIAL", SS,
+            "-OCTREE_NORMALS", scales[1],
+            "-SAVE_CLOUDS","FILE", gsub(".asc","_0_10_NORM.asc",c2c.file),
+            "-OCTREE_NORMALS", scales[2],
+            "-SAVE_CLOUDS","FILE", gsub(".asc","_0_50_NORM.asc",c2c.file),
+            "-OCTREE_NORMALS", scales[3],
+            "-SAVE_CLOUDS", "FILE", gsub(".asc","_0_75_NORM.asc",c2c.file),
+            sep = " "))  
+  
+  while (term==1) sys.sleep(10)
+  
+}
+
+rfPrep<-function(c2c.file){
+  dat<-data.table::fread(gsub(".asc","_0_10_NORM.asc",c2c.file),header = FALSE)
+  colnames(dat)[1:7]<-c("X","Y","Z","angle","nX10","nY10","nZ10")
+  
+  dat1<-data.table::fread(gsub(".asc","_0_50_NORM.asc",c2c.file), select = c(5,6,7),header = FALSE)
+  colnames(dat1)[1:3]<-c("nX50","nY50","nZ50")
+  
+  dat2<-data.table::fread(gsub(".asc","_0_75_NORM.asc",c2c.file), select = c(5,6,7),header = FALSE)
+  colnames(dat2)[1:3]<-c("nX75","nY75","nZ75")
+  
+  dat<-cbind(dat,dat1,dat2)
+  remove(dat1,dat2)
+  gc()
+  
+  #ensures all imports are numeric, avoiding errors
+  dat<-as.data.frame(dat)
+  for(ii in 1:length(dat)) if (class(dat[[1,ii]])=="character") dat[,ii]<- as.numeric( dat[,ii] )
+  return(dat)
+}
+
+
+
+TLSLeAF<-function(input_file,
+                  overwrite=TRUE,
+                  center, 
+                  SCATTER_LIM=85,
+                  SS=0.02, 
+                  scales=c(0.1,0.5,0.75),
+                  rf_model,
+                  vox.res,
+                  minVoxDensity=5,
+                  superDF=FALSE,
+                  clean=TRUE,...){
+  
+  
+  #names of output files
+  output_file = gsub(".ptx",".asc", input_file)
+  angle.file.name<-gsub(".ptx","_angles.asc", input_file)
+  c2c.file<-angle.file.name
+  gc()
+  
+  #Calculate normals for gridded TLS point cloud
+  if(!file.exists(output_file)|
+     overwrite) normalCalc(input_file)
+  
+  #Calculate scattering angle and leaf angle
+  if(!file.exists(angle.file.name)|
+     overwrite){
+    dat<-data.table::fread(output_file, header = FALSE)
+    dat<-angleCalc(dat,
+                   center, 
+                   SCATTER_LIM)
+    fwrite(dat, file = angle.file.name, sep = " ", row.names = FALSE)
+  } 
+  # else dat<-data.table::fread(angle.file.name, header = FALSE)
+  
+  #Classify wood and leaf from random forest classifier
+  if(file.exists(c2c.file)&
+      !(file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
+      file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
+      file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file)))|
+     overwrite) classMetricCalc(c2c.file, SS, scales)
+  
+  if(file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
+      file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
+      file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file))) {
+    
+    dat<-na.omit(rfPrep(c2c.file))
+    dat$predict<-predict(rf_model, dat)
+    dat<-cbind(dat[,1:4], dat$predict)
+    colnames(dat)[4:5]<-c("dip_deg", "class")
+    
+  }
+  
+  #Correct topography and calculate the LAD and vertical LAD
+  if(correct.topography == TRUE) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
+  
+  # leaf angle voxelation and density normalization
+  voxels<-LAvoxel(dat, vox.res)
+  voxels<-voxels[voxels$n>minVoxDensity,]
+  
+  
+  #simulate LAD from voxel statistics
+  LAD<-sim_LAD(voxels$dip_dir,voxels$dip_dir_sd)
+  LAD<-na.exclude(LAD[LAD$a>=0 & LAD$a<=90,])
+  LAD_lim<-data.frame(a=LAD)
+  
+  #fit beta function and get beta parameters from LAD
+  #FIT BETA DISTRIBUTION
+  
+  m<-fitdist(as.numeric(LAD_lim$a)/90,
+             'beta',
+             method='mme')
+  
+  # Get alpha and beta parametrs
+  alpha0 <- m$estimate[1] # parameter 1
+  beta0 <- m$estimate[2] # parameter 2
+  beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01), 
+                                                   alpha0,beta0))
+  param<-data.frame(alpha0,beta0)
+  
+  TLSLeAF.dat<-new("TLSLeAF",
+                   parameters=data.frame(c(file=input_file, 
+                                           center, 
+                                           SCATTER_LIM=85,
+                                           SS=0.02, 
+                                           scales=c(0.1,0.5,0.75),
+                                           vox.res=vox.res,
+                                           superDF=FALSE)),
+                   dat=dat,
+                   voxels=as.data.frame(voxels),
+                   LAD=LAD_lim,
+                   Beta_parameters=param)
+  
+  if(superDF) return(TLSLeAF.dat)
+  
+}
+
+
+TLSLeAF.class<-setClass("TLSLeAF",representation=representation(
+  parameters = "data.frame",
+  dat = "data.frame",
+  voxels="data.frame",
+  LAD = 'data.frame',
+  Beta_parameters = "data.frame"
+))
+
+clean.temp<-function(output_file,c2c.file){
+  temp.files<-c(output_file, gsub(".asc","_angles.asc",output_file),
+                gsub(".asc","_0_10_NORM.asc",c2c.file),
+                gsub(".asc","_0_50_NORM.asc",c2c.file),
+                gsub(".asc","_0_75_NORM.asc",c2c.file))[file.exists(c(output_file, gsub(".asc","_angles.asc",output_file),
+                                                                      gsub(".asc","_0_10_NORM.asc",c2c.file),
+                                                                      gsub(".asc","_0_50_NORM.asc",c2c.file),
+                                                                      gsub(".asc","_0_75_NORM.asc",c2c.file)))]
+  
+  if(clean & length(temp.files)>0) file.remove(temp.files)
+  
+  gc()
+}
+
 
