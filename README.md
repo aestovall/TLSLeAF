@@ -45,34 +45,35 @@ Load packages, functions, and input parameters.
 ```{r,echo=FALSE}
 source('R/000_setup.R')
 ```
-Calculate normals for gridded TLS point cloud
+
+Load in your TLS file in PTX format (other gridded formats may work, but are untested).
 ```{r,echo=FALSE}
-source('../R/00_calculateNormals.R')
-```
-Calculate scattering angle and leaf angle
-```{r,echo=FALSE}
-source('../R/01_calculateAngle.R')
-```
-Classify wood and leaf from random forest classifier
-```{r,echo=FALSE}
-source('../R/02_classify_wood_leaves.R')
-```
-Correct topography
-```{r,echo=FALSE}
-source('../R/03_normalize_topography.R')
-```
-Leaf angle voxelation and density normalization
-```{r,echo=FALSE}
-source('../R/04_voxelize.R')
-```
-Simulate LAD from voxel statistics
-```{r,echo=FALSE}
-source('../R/05_simulate_LAD.R')
+files<-list.files(pattern = "ptx", 
+                  recursive = TRUE, 
+                  full.names = TRUE)
+input_file = files[1]
+
 ```
 
-Fit beta function and get beta parameters from LAD
+Find center coordinates. Modify the `center` variable according to file format.
 ```{r,echo=FALSE}
-source('../R/06_fit_beta.R')
+
+center<-fread(input_file, nrows=4, header=FALSE)[1,]
+colnames(center)<-c("x","y","z")
+```
+
+FINALLY, Run TLSLeAF. The output from the following default parameters will be of the `TLSLeAF.class`, allowing access to all intermediate products used to create the leaf angle distribution.
+```{r,echo=FALSE}
+df<-TLSLeAF(input_file, 
+            overwrite=TRUE,
+            center, 
+            SCATTER_LIM=85,
+            SS=0.02, 
+            scales=c(0.1,0.5,0.75),
+            rf_model,
+            vox.res=5,
+            minVoxDensity=5,
+            superDF=TRUE)
 ```
 
 Success (hopefully)! You will find all of the processed files in the `output` directory.
