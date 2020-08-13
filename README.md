@@ -29,18 +29,67 @@ file.edit('R/000_setup.R')
 
 Add your operating system type and specify the path to CloudCompare. Further testing is necessary to ensure this works on a Windows machine.
 
-Two setup option are available: 
+Several setup option are available: 
 
 ```{r,echo=FALSE}
-SCATTER_LIM = 85 #threshold of scattering angle to remove
+SCATTER_LIM = 85          #Threshold of scattering angle to remove'
 correct.topography = TRUE #topographically normalize the voxels?
+SS = 0.02                 #Spatial subsampling resolution
+scales = c(0.1,0.5,0.75)  #3 scales of normal computation. Set for RF model
+vox.res = 0.1             #voxel resolution for LAD normalization
+superDF = TRUE            #Merges output into a single TLSLeAF.class
+clean = TRUE              #removes temporary files created during processing
 ```
 `SCATTER_LIM` is a filter based on the angle of reflection of the laser pulse, relative to the normal of the leaf surface. For instance, a 0 degree scattering angle would be found for surfaces perpendicular to the laser trajectory. A 90 degree angle would be a surface parallel to the laser trajectory. The algorithm filters scattering angles greater than 85 degrees by default.
 
 `correct.topography` creates a surface model from the TLS data and normalizes returns and angles according to the ground surface.
 
-## RUN THE PIPELINE
+`SS` is the resolution of the spatial subsample. TLSLeAF defaults to 0.02 m or 2 cm point spacing since this resolution retains substantial detail, but minimizes computational needs.
 
+`scales` are the three octree sizes at which normals are computed for the leaf wood classification. The values here MUST align with those of the classifier imported into the environment - in the case of TLSLeAF, `rf_model`.
+
+`vox.res` is the resolution of the voxelization for normalizing density of leaf angle measurments. Laboratory test show 0.1 or 10 cm to be an appropriate resolution for this step, but the parameter may be set to a more coarse resolution (e.g. 1 m) if desired.
+
+`superDF` is a logical option (`TRUE`/`FALSE`) to have the intermediate and final output of TLSLeAF be saved in the environment as a `TLSLeAF.class`. The `TLSLeAF.class` has the following structure (class):
+
+```{r,echo=FALSE}
+parameters ("data.frame")
+dat ("data.frame")
+voxels ("data.frame")
+LAD ("data.frame")
+Beta_parameters ("data.frame")
+```
+All slots can be accessed easily (e.g. `dat@LAD`) from a single object.
+
+`clean` is a logical option. When set to `TRUE` the temporary files in the `input` folder will be removed.
+
+## SET UP CLOUDCOMPARE
+
+TLSLeAF relies on CloudCompare commandline for key portions of the processing. To setup CloudCompare for TLSLeAF you must first designate your operating system:
+
+```{r,echo=FALSE}
+OS<-"mac" 
+OS<-"windows"
+```
+Depending on the operating system selected, note if CloudCompare is already in your `PATH`.
+
+```{r,echo=FALSE}
+PATH = FALSE
+```
+
+If not, please add the location of the CloudCompare executable/application. For example:
+
+```{r,echo=FALSE}
+#MAC
+"/Applications/CloudCompare.app/Contents/MacOS/CloudCompare"
+
+#WINDOWS
+shQuote('C:\\Program Files\\CloudCompare\\CloudCompare.exe')
+```
+
+Now, TLSLeAF should be properly configured and ready to run!
+
+## RUN THE PIPELINE
 Load packages, functions, and input parameters.
 ```{r,echo=FALSE}
 source('R/000_setup.R')
