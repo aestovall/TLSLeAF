@@ -56,6 +56,7 @@ scatter<-function(dat){
 }
 
 normalize_topography<-function(dat, res = 5){
+  colnames(dat)[1:3]<-c("X","Y","Z")
   las<-LAS(dat[,1:3])
   crs(las)<-"+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs"
   
@@ -98,6 +99,7 @@ normalize_topography<-function(dat, res = 5){
 }
 
 LAvoxel<-function(dat,res = 0.1){
+  colnames(dat)[1:3]<-c("X","Y","Z")
   las<-LAS(dat[,1:3])
   crs(las)<-"+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs"
   las@data$Z<-dat$z_cor

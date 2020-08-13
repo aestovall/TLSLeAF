@@ -15,13 +15,14 @@ correct.topography = TRUE #topographically normalize the voxels?
 SS = 0.02                 #Spatial subsampling resolution
 scales = c(0.1,0.5,0.75)  #3 scales of normal computation. Set for RF model
 vox.res = 0.1             #voxel resolution for LAD normalization
+minVoxDensity = 5         #minimum number of measurments per voxel
 superDF = TRUE            #Merges output into a single TLSLeAF.class
 clean = TRUE              #removes temporary files created during processing
 
 #### SETUP CloudCompare ####
 #What is your operating system?
-#OS<-"mac" 
-OS<-"windows" 
+OS<-"mac" 
+#OS<-"windows" 
 
 #Is CloudCompare already in the PATH?
 PATH = FALSE
@@ -32,8 +33,8 @@ PATH = FALSE
 #Mac
 if(!PATH & OS=='mac') cc_dir = 
   
-  "/Applications/CloudCompare.app/Contents/MacOS/CloudCompare"
-
+  #"/Applications/CloudCompare.app/Contents/MacOS/CloudCompare"
+  '/Users/aestoval/Desktop/CloudCompare.app/Contents/MacOS/CloudCompare'
 #Windows
 if(!PATH & !OS=='mac') cc_dir = 
   
@@ -58,7 +59,7 @@ library(fitdistrplus)
 rf_model<-readRDS("leaf_wood_class_RF.rds")
 
 #load TLSLeAF functions
-source('R/angle_FUN.R')
+source('R/TLSLeAF_FUN.R')
 
 # create directories
 if(!dir.exists("input")) dir.create("input")
