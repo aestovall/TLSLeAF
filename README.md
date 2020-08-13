@@ -5,20 +5,6 @@ Algorithms described in "Automatic leaf angle estimates from single-scan terrest
 
 TLSLeAF is based in the R programming language and takes advantage of CloudCompare commandline tools. 
 
-## INITIAL SETUP
-
-Add your gridded TLS data in the "input" folder.
-
-```{r,echo=FALSE}
-files<-list.files(pattern = "ptx", 
-                  recursive = TRUE, 
-                  full.names = TRUE)
-i=1
-
-input_file = files[i]
-output_file = gsub(".ptx",".asc", input_file)
-```
-
 ## EDIT THE SETUP FILE FOR YOUR SYSTEM
 
 Make sure the setup file is correct and save. The most important step is to have Cloud Compare installed and add the executable path into the setup file.
@@ -49,6 +35,8 @@ clean = TRUE              #removes temporary files created during processing
 `scales` are the three octree sizes at which normals are computed for the leaf wood classification. The values here MUST align with those of the classifier imported into the environment - in the case of TLSLeAF, `rf_model`.
 
 `vox.res` is the resolution of the voxelization for normalizing density of leaf angle measurments. Laboratory test show 0.1 or 10 cm to be an appropriate resolution for this step, but the parameter may be set to a more coarse resolution (e.g. 1 m) if desired.
+
+`minVoxDensity` is the minimum number of measurments per voxel that are required to retain a voxel. Default is 5 measurments, but should be adjusted depending on the voxel resolution (`vox.res`).
 
 `superDF` is a logical option (`TRUE`/`FALSE`) to have the intermediate and final output of TLSLeAF be saved in the environment as a `TLSLeAF.class`. The `TLSLeAF.class` has the following structure (class):
 
