@@ -243,6 +243,11 @@ TLSLeAF<-function(input_file,
   if(!file.exists(output_file)|
      overwrite) normalCalc(input_file)
   
+  if(file.size(output_file)<file.size(input_file)){
+    warning(paste0("Normals calculation may have been interrupted. Please check ",
+                   output_file)) 
+  } 
+  
   #Calculate scattering angle and leaf angle
   if(!file.exists(angle.file.name)|
      overwrite){
