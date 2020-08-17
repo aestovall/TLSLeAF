@@ -69,4 +69,4 @@ if(!dir.exists("figures")) dir.create("figures")
 # Add the path to your cloud compare executable
 if(PATH & OS=='mac') cloudcompare<-'cloudcompare' else cloudcompare <- cc_dir
 if(PATH & OS!='mac') cloudcompare<-'cloudcompare' else cloudcompare <- cc_dir
-if(OS=="mac") run<-function(x) rstudioapi::terminalExecute(x) else run<-function(x) shell(x)
+if(OS=="mac") run<-function(x) rstudioapi::terminalExecute(x) else run<-function(x) shell(x, intern = TRUE)

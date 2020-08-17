@@ -19,7 +19,7 @@ center<-fread(input_file, nrows=4, header=FALSE)[1,]
 colnames(center)<-c("x","y","z")
 
 df<-TLSLeAF(input_file, 
-            overwrite=FALSE,
+            overwrite=TRUE,
             center, 
             SCATTER_LIM=80,
             SS=0.02, 
