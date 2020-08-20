@@ -147,7 +147,7 @@ normalCalc<-function(input_file){
 }
 
 
-angleCalc<-function(dat, center, SCATTER_LIM=85){
+angleCalc<-function(dat, center, scatterLim=85){
   #column naming
   colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
   
@@ -163,7 +163,7 @@ angleCalc<-function(dat, center, SCATTER_LIM=85){
   
   # estimate scattering angle and filter, removing steep angles
   dat$scatter<-scatter(dat)
-  dat<-dat[dat$scatter<=SCATTER_LIM,]
+  dat<-dat[dat$scatter<=scatterLim,]
   dat<-na.omit(dat)
   
   #Convert normals to leaf orientation and leaf angle
@@ -222,12 +222,12 @@ rfPrep<-function(c2c.file){
 TLSLeAF<-function(input_file,
                   overwrite=TRUE,
                   center, 
-                  SCATTER_LIM=85,
+                  scatterLim=85,
                   SS=0.02, 
                   scales=c(0.1,0.5,0.75),
                   rf_model,
                   correct.topography=TRUE,
-                  vox.res,
+                  voxRes,
                   minVoxDensity=5,
                   superDF=FALSE,
                   clean=TRUE,...){
@@ -254,7 +254,7 @@ TLSLeAF<-function(input_file,
     dat<-data.table::fread(output_file, header = FALSE)
     dat<-angleCalc(dat,
                    center, 
-                   SCATTER_LIM)
+                   scatterLim)
     fwrite(dat, file = angle.file.name, sep = " ", row.names = FALSE)
   } 
   # else dat<-data.table::fread(angle.file.name, header = FALSE)
@@ -281,7 +281,7 @@ TLSLeAF<-function(input_file,
   if(correct.topography==TRUE) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
   
   # leaf angle voxelation and density normalization
-  voxels<-LAvoxel(dat, vox.res)
+  voxels<-LAvoxel(dat, voxRes)
   voxels<-voxels[voxels$n>minVoxDensity,]
   
   
@@ -307,10 +307,10 @@ TLSLeAF<-function(input_file,
   TLSLeAF.dat<-new("TLSLeAF",
                    parameters=data.frame(c(file=input_file, 
                                            center, 
-                                           SCATTER_LIM=85,
+                                           scatterLim=85,
                                            SS=0.02, 
                                            scales=c(0.1,0.5,0.75),
-                                           vox.res=vox.res,
+                                           voxRes=voxRes,
                                            superDF=FALSE)),
                    dat=dat,
                    voxels=as.data.frame(voxels),

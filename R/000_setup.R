@@ -10,11 +10,11 @@
 #                    'fitdistrplus'))
 
 #### Set optional parameters ####
-SCATTER_LIM = 85          #Threshold of scattering angle to remove'
+scatterLim = 85          #Threshold of scattering angle to remove'
 correct.topography = TRUE #topographically normalize the voxels?
 SS = 0.02                 #Spatial subsampling resolution
 scales = c(0.1,0.5,0.75)  #3 scales of normal computation. Set for RF model
-vox.res = 0.1             #voxel resolution for LAD normalization
+voxRes = 0.1             #voxel resolution for LAD normalization
 minVoxDensity = 5         #minimum number of measurments per voxel
 superDF = TRUE            #Merges output into a single TLSLeAF.class
 clean = TRUE              #removes temporary files created during processing

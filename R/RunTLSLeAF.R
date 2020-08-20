@@ -21,11 +21,11 @@ colnames(center)<-c("x","y","z")
 df<-TLSLeAF(input_file, 
             overwrite=TRUE,
             center, 
-            SCATTER_LIM=80,
+            scatterLim=80,
             SS=0.02, 
             scales=c(0.1,0.5,0.75),
             rf_model,
-            vox.res=0.1,
+            voxRes=0.1,
             minVoxDensity=5,
             superDF=TRUE)
 

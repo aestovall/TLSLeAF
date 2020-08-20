@@ -18,16 +18,16 @@ Add your operating system type and specify the path to CloudCompare. Further tes
 Several setup option are available: 
 
 ```{r,echo=FALSE}
-SCATTER_LIM = 85          #Threshold of scattering angle to remove'
+scatterLim = 85          #Threshold of scattering angle to remove'
 correct.topography = TRUE #topographically normalize the voxels?
 SS = 0.02                 #Spatial subsampling resolution
 scales = c(0.1,0.5,0.75)  #3 scales of normal computation. Set for RF model
-vox.res = 0.1             #voxel resolution for LAD normalization
+voxRes = 0.1             #voxel resolution for LAD normalization
 minVoxDensity = 5         #minimum number of measurments per voxel
 superDF = TRUE            #Merges output into a single TLSLeAF.class
 clean = TRUE              #removes temporary files created during processing
 ```
-`SCATTER_LIM` is a filter based on the angle of reflection of the laser pulse, relative to the normal of the leaf surface. For instance, a 0 degree scattering angle would be found for surfaces perpendicular to the laser trajectory. A 90 degree angle would be a surface parallel to the laser trajectory. The algorithm filters scattering angles greater than 85 degrees by default.
+`scatterLim` is a filter based on the angle of reflection of the laser pulse, relative to the normal of the leaf surface. For instance, a 0 degree scattering angle would be found for surfaces perpendicular to the laser trajectory. A 90 degree angle would be a surface parallel to the laser trajectory. The algorithm filters scattering angles greater than 85 degrees by default.
 
 `correct.topography` creates a surface model from the TLS data and normalizes returns and angles according to the ground surface.
 
@@ -35,9 +35,9 @@ clean = TRUE              #removes temporary files created during processing
 
 `scales` are the three octree sizes at which normals are computed for the leaf wood classification. The values here MUST align with those of the classifier imported into the environment - in the case of TLSLeAF, `rf_model`.
 
-`vox.res` is the resolution of the voxelization for normalizing density of leaf angle measurments. Laboratory test show 0.1 or 10 cm to be an appropriate resolution for this step, but the parameter may be set to a more coarse resolution (e.g. 1 m) if desired.
+`voxRes` is the resolution of the voxelization for normalizing density of leaf angle measurments. Laboratory test show 0.1 or 10 cm to be an appropriate resolution for this step, but the parameter may be set to a more coarse resolution (e.g. 1 m) if desired.
 
-`minVoxDensity` is the minimum number of measurments per voxel that are required to retain a voxel. Default is 5 measurments, but should be adjusted depending on the voxel resolution (`vox.res`).
+`minVoxDensity` is the minimum number of measurments per voxel that are required to retain a voxel. Default is 5 measurments, but should be adjusted depending on the voxel resolution (`voxRes`).
 
 `superDF` is a logical option (`TRUE`/`FALSE`) to have the intermediate and final output of TLSLeAF be saved in the environment as a `TLSLeAF.class`. The `TLSLeAF.class` has the following structure (class):
 
@@ -105,11 +105,11 @@ FINALLY, Run TLSLeAF. The output from the following default parameters will be o
 df<-TLSLeAF(input_file, 
             overwrite=TRUE,
             center, 
-            SCATTER_LIM=85,
+            scatterLim=85,
             SS=0.02, 
             scales=c(0.1,0.5,0.75),
             rf_model,
-            vox.res=0.1,
+            voxRes=0.1,
             minVoxDensity=5,
             superDF=TRUE)
 ```
