@@ -31,24 +31,42 @@ ConvertNormalToDipAndDipDir<-function(x) {
 }
 
 
-RZA<-function (scan, deg = FALSE){
-  colnames(scan)[1:3] <- c("x","y","z")
-  scan$r <- sqrt(scan$x^2 + scan$y^2 +scan$z^2)
-  scan$inc <- ((acos(scan$z/scan$r)))
-  scan$az <- atan2(scan$y,scan$x)
+RZA<-function (dat, deg = FALSE){
+  colnames(dat)[1:3] <- c("X","Y","Z")
+  r <- sqrt(dat$X^2 + dat$Y^2 +dat$Z^2)
+  inc <- ((acos(dat$Z/r)))
+  remove(r)
+  gc()
+  
+  # az <- atan2(scan$y,scan$x)
   
   if(deg==TRUE){
-    scan$inc<-scan$inc*(180/pi)
-    scan$az<-scan$az*(180/pi)
+    inc<-inc*(180/pi)
+    return(inc)
+    # scan$az<-scan$az*(180/pi)
   }
+  return(inc)
   
-  return(scan)
 }
+
+# RZA<-function (scan, deg = FALSE){
+#   colnames(scan)[1:3] <- c("x","y","z")
+#   scan$r <- sqrt(scan$x^2 + scan$y^2 +scan$z^2)
+#   scan$inc <- ((acos(scan$z/scan$r)))
+#   scan$az <- atan2(scan$y,scan$x)
+#   
+#   if(deg==TRUE){
+#     scan$inc<-scan$inc*(180/pi)
+#     scan$az<-scan$az*(180/pi)
+#   }
+#   
+#   return(scan)
+# }
 
 scatter<-function(dat){
   # time<-Sys.time()
-  dat[,14:16]<-dat[,1:3]/sqrt(rowSums(dat[,1:3]^2))
-  dat$dot<-geometry::dot(dat[,14:16],dat[,c('nX','nY','nZ')],d=2)
+  dat[,12:14]<-dat[,1:3]/sqrt(rowSums(dat[,1:3]^2))
+  dat$dot<-geometry::dot(dat[,12:14],dat[,c('nX','nY','nZ')],d=2)
   my.dt <- as.data.table(cbind(abs(dat$dot),1))
   dat$dot<-my.dt[,row.min:=pmin(V1,V2)]$row.min
   return(acos(dat$dot) * (180/pi))
@@ -115,17 +133,30 @@ LAvoxel<-function(dat,res = 0.1){
   return(voxels)
 }
 
-sim_LAD<-function(x,sd){
+sim_LAD<-function(voxels,x,sd){
   sim_ls<-list()
   list_length<-length(x)
-  pb <- txtProgressBar(min = 0, max = list_length, style = 3)
+  # pb <- txtProgressBar(min = 0, max = list_length, style = 3)
   for(i in 1:list_length){
-    sim_ls[[i]]<-data.frame(a=rnorm(10, mean=x[i], sd=sd[i]))
-    setTxtProgressBar(pb, i)
+    sim_ls[[i]]<-data.frame(X=voxels$X[i],Y=voxels$Y[i],Z=voxels$Z[i],
+                            a=rnorm(10, mean=x[i], sd=sd[i]))
+    # setTxtProgressBar(pb, i)
   }
   return(data.frame(a=do.call(rbind, sim_ls)))
-  close(pb)
+  # close(pb)
 }
+
+# sim_LAD<-function(voxels){
+#   do.call(rbind,
+#           apply(voxels, 1,
+#                 function(x) data.frame(X=x[1],
+#                                        Y=x[2],
+#                                        Z=x[3],
+#                                        a=rnorm(10,
+#                                                mean=x[4],
+#                                                sd=x[5])))
+#   )
+# }
 
 normalCalc<-function(input_file){
   
@@ -152,14 +183,14 @@ angleCalc<-function(dat, center, scatterLim=85){
   colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
   
   #Adjust coordinates to scanner center
-  dat[,1:3]<-dat[,1:3]-t(c(center))
+  # dat[,1:3]<-dat[,1:3]-t(c(center))
   
   #ensures all data are numeric, avoiding errors
   dat<-as.data.frame(dat)
   for(ii in 1:length(dat)) if (class(dat[[1,ii]])=="character") dat[,ii]<- as.numeric( dat[,ii] )
   
   #calculate the radius, zenith, and azimuth angles from XYZ coordinates
-  dat<-RZA(dat)
+  dat$inc<-RZA(dat)
   
   # estimate scattering angle and filter, removing steep angles
   dat$scatter<-scatter(dat)
@@ -170,6 +201,35 @@ angleCalc<-function(dat, center, scatterLim=85){
   dat<-cbind(dat[,1:3],
              ConvertNormalToDipAndDipDir(dat[,8:10])[,2])
   return(dat)
+  
+}
+
+cloudRotation<-function(angle.file.name, transformationMatrix){
+  print(paste("Rotating", angle.file.name))
+  
+  write.table(transformationMatrix, "transformation_temp.txt", 
+              row.names = FALSE, col.names = FALSE)
+  
+  term<-1
+  
+  term<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
+                  "-SILENT",
+                  "-C_EXPORT_FMT", "ASC", "-PREC", 6, #Set asc as export format
+                  "-NO_TIMESTAMP",
+                  "-AUTO_SAVE OFF",
+                  "-O", angle.file.name, #open the subsampled file
+                  "-APPLY_TRANS", "transformation_temp.txt",
+                  "-SAVE_CLOUDS", "FILE", gsub(".asc","_t.asc",angle.file.name),
+                  # "-SS SPATIAL", SS,
+                  # "-OCTREE_NORMALS", scales[1],
+                  # "-SAVE_CLOUDS","FILE", gsub(".asc","_0_10_NORM.asc",c2c.file),
+                  # "-OCTREE_NORMALS", scales[2],
+                  # "-SAVE_CLOUDS","FILE", gsub(".asc","_0_50_NORM.asc",c2c.file),
+                  # "-OCTREE_NORMALS", scales[3],
+                  # "-SAVE_CLOUDS", "FILE", gsub(".asc","_0_75_NORM.asc",c2c.file),
+                  sep = " "))  
+  
+  while (term==1) sys.sleep(10)
   
 }
 
@@ -217,8 +277,6 @@ rfPrep<-function(c2c.file){
   return(dat)
 }
 
-
-
 TLSLeAF<-function(input_file,
                   overwrite=TRUE,
                   center, 
@@ -237,16 +295,28 @@ TLSLeAF<-function(input_file,
   output_file = gsub(".ptx",".asc", input_file)
   angle.file.name<-gsub(".ptx","_angles.asc", input_file)
   c2c.file<-angle.file.name
+  class.file.name<-gsub(".ptx","_angles_class.asc", input_file)
+  # c2c.file<-gsub(".asc","_t.asc",angle.file.name)
   gc()
   
+  #Clear any open terminals
+  # lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
+
   #Calculate normals for gridded TLS point cloud
   if(!file.exists(output_file)|
      overwrite) normalCalc(input_file)
   
-  if(file.size(output_file)<file.size(input_file)){
-    warning(paste0("Normals calculation may have been interrupted. Please check ",
-                   output_file)) 
-  } 
+  while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+    Sys.sleep(0.1)
+  }
+  print("Terminal available")
+  # lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
+  
+  # if(file.size(output_file)<file.size(input_file)){
+  #   warning(paste0("Normals calculation may have been interrupted. Please check ",
+  #                  output_file)) 
+  # } 
   
   #Calculate scattering angle and leaf angle
   if(!file.exists(angle.file.name)|
@@ -259,6 +329,25 @@ TLSLeAF<-function(input_file,
   } 
   # else dat<-data.table::fread(angle.file.name, header = FALSE)
   
+  while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+    Sys.sleep(0.1)
+  }
+  print("Terminal available")
+  
+  
+  # if(!file.exists(gsub(".asc","_t.asc",angle.file.name))|
+  #    overwrite){
+  #   cloudRotation(angle.file.name, 
+  #                 transformationMatrix)
+  # }
+  
+  while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+    Sys.sleep(0.1)
+  }
+  print("Terminal available")
+  
   #Classify wood and leaf from random forest classifier
   if(file.exists(c2c.file)&
      !(file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
@@ -266,7 +355,14 @@ TLSLeAF<-function(input_file,
        file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file)))|
      overwrite) classMetricCalc(c2c.file, SS, scales)
   
-  if(file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
+  while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+    Sys.sleep(0.1)
+  }
+  print("Terminal available")
+
+  if(!file.exists(class.file.name)&
+     file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
      file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
      file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file))) {
     
@@ -275,50 +371,58 @@ TLSLeAF<-function(input_file,
     dat<-cbind(dat[,1:4], dat$predict)
     colnames(dat)[4:5]<-c("dip_deg", "class")
     
-  }
+    fwrite(dat, file = class.file.name, sep = " ", row.names = FALSE)
+  } else Sys.sleep(0.1)
+  
+  if(file.exists(class.file.name)) dat<-fread(class.file.name)
   
   #Correct topography and calculate the LAD and vertical LAD
-  if(correct.topography==TRUE) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
-  
+  if(correct.topography) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
+
   # leaf angle voxelation and density normalization
   voxels<-LAvoxel(dat, voxRes)
+  
+  voxels<-voxels[voxels$n>quantile(voxels$n,0.01),]
   voxels<-voxels[voxels$n>minVoxDensity,]
-  
-  
+
   #simulate LAD from voxel statistics
-  LAD<-sim_LAD(voxels$dip_dir,voxels$dip_dir_sd)
-  LAD<-na.exclude(LAD[LAD$a>=0 & LAD$a<=90,])
-  LAD_lim<-data.frame(a=LAD)
-  
+  LAD<-sim_LAD(voxels, voxels$dip_dir,voxels$dip_dir_sd)
+  LAD<-na.exclude(LAD[LAD$a.a>=0 & LAD$a.a<=90,])
+  LAD_lim<-data.frame(a=LAD$a.a)
+
   #fit beta function and get beta parameters from LAD
   #FIT BETA DISTRIBUTION
-  
+
   m<-fitdist(as.numeric(LAD_lim$a)/90,
              'beta',
              method='mme')
-  
+
   # Get alpha and beta parametrs
   alpha0 <- m$estimate[1] # parameter 1
   beta0 <- m$estimate[2] # parameter 2
-  beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01), 
+  beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01),
                                                    alpha0,beta0))
   param<-data.frame(alpha0,beta0)
-  
+
   TLSLeAF.dat<-new("TLSLeAF",
-                   parameters=data.frame(c(file=input_file, 
-                                           center, 
+                   parameters=data.frame(c(file=input_file,
+                                           center,
                                            scatterLim=85,
-                                           SS=0.02, 
+                                           SS=0.02,
                                            scales=c(0.1,0.5,0.75),
                                            voxRes=voxRes,
-                                           superDF=FALSE)),
+                                           superDF=TRUE)),
                    dat=dat,
                    voxels=as.data.frame(voxels),
-                   LAD=LAD_lim,
-                   Beta_parameters=param)
-  
+                   LAD=LAD,
+                   Beta_parameters=param,
+                   beta=beta)
+
   if(superDF) return(TLSLeAF.dat)
   
+  if(clean==TRUE){
+    clean.temp(output_file,c2c.file)
+  }
 }
 
 
@@ -327,7 +431,8 @@ TLSLeAF.class<-setClass("TLSLeAF",representation=representation(
   dat = "data.frame",
   voxels="data.frame",
   LAD = 'data.frame',
-  Beta_parameters = "data.frame"
+  Beta_parameters = "data.frame",
+  beta="data.frame"
 ))
 
 clean.temp<-function(output_file,c2c.file){
@@ -342,6 +447,86 @@ clean.temp<-function(output_file,c2c.file){
   if(clean & length(temp.files)>0) file.remove(temp.files)
   
   gc()
+}
+
+
+pgapF<-function (scan.sub, row_res, col_res, z_res) {
+  
+  total<-(row_res/150)*col_res*5
+  list <- seq(floor(min(scan.sub[3])), 
+              ceiling(max(scan.sub[3])), 
+              by = z_res)
+  
+  pgap <- NULL
+  for (i in 1:length(list)) {
+    pgap[i] <- 1-(length(subset(scan.sub$z, scan.sub$z<list[i])))/total
+  }
+  pgap<- (1-max(pgap))+pgap
+  return(pgap)
+}
+
+a_vai<-function(scan, a_ls, z_res, col_res, row_res){
+  vai_a<-list()
+  for (a in 1:length(a_ls)){
+    
+    scan.sub<-subset(scan,scan$inc>a_ls[a]&scan$inc<(a_ls[a]+5))
+    list <- seq(floor(min(scan.sub[3])), 
+                ceiling(max(scan.sub[3])), 
+                by = z_res)
+    
+    pgap<-pgapF(scan.sub, row_res, col_res, z_res)
+    
+    # pgap[pgap<exp(8/-1.1)] <- exp(8/-1.1)
+    
+    f <- -1.1*log(pgap)
+    # 0.4/cos(a_ls[a]*(pi/180))
+    
+    spl <- smooth.spline(x=list,y=f, df=length(list)-round(0.3*length(list)))
+    plot(spl)
+    pred <- predict(spl)
+    
+    f.prime <- (diff(f)/diff(list))
+    f.pred.prime <- predict(spl, deriv=1)
+    
+    f.pred.prime$y[f.pred.prime$y<0]<-0
+    plot(f.pred.prime)
+    lines(x = f.pred.prime, col = "red")
+    
+    f.prime.df<-data.frame(y=f.pred.prime$y, x=f.pred.prime$x)
+    f.prime.sub<-subset(f.prime.df,f.prime.df$x<100)
+    f.prime.df$y[f.pred.prime$y<0]<-0
+    
+    vai_a[[a]]<-data.frame(
+      # scan = gsub(".ptx","", files[l]),
+      a = a_ls[a],
+      z = f.prime.sub[,2],
+      dx = f.prime.sub[,1])
+    
+    
+  }
+  return(data.frame(do.call(rbind,vai_a), scan = name))
+}
+
+vai<-function (scan, a_range, a_bin, z_res, col_res, row_res, name){
+  # scan<-RZA(scan)
+  a_ls<-seq(min(a_range),max(a_range), by = a_bin) # zenith angle range
+  
+  vai_out<-a_vai(scan, a_ls, z_res, col_res, row_res)
+  return(vai_out)
+}
+
+
+
+vai_weighted <- function(a_vai, adj_z, z_res) {
+  a_vai <- a_vai[a_vai$z>0,]
+  a_vai$z_adj<-a_vai$z+adj_z
+  a_vai$z_bin<-floor(a_vai$z_adj)
+  #weight the profiles by zenith angle
+  a_vai$weight<-sin(a_vai$a*(pi/180))
+  a_vai_weight<-a_vai %>%
+    group_by(scan, z_bin) %>% 
+    mutate(dxw = weighted.mean(dx, weight))
+  return(a_vai_weight)
 }
 
 
