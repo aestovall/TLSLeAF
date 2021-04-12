@@ -380,11 +380,12 @@ TLSLeAF<-function(input_file,
   if(correct.topography) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
 
   # leaf angle voxelation and density normalization
-  voxels<-LAvoxel(dat, voxRes)
+  voxels<-LAvoxel(na.omit(dat[dat$z_cor>1,]), voxRes)
   
   voxels<-voxels[voxels$n>quantile(voxels$n,0.01),]
   voxels<-voxels[voxels$n>minVoxDensity,]
-
+  # voxels<-voxels[voxels$Z>1,]
+  
   #simulate LAD from voxel statistics
   LAD<-sim_LAD(voxels, voxels$dip_dir,voxels$dip_dir_sd)
   LAD<-na.exclude(LAD[LAD$a.a>=0 & LAD$a.a<=90,])
@@ -530,3 +531,210 @@ vai_weighted <- function(a_vai, adj_z, z_res) {
 }
 
 
+G_calculations<-function(df){
+  
+  G_ls<-list()
+  dat<-df@dat
+  dat<-dat[dat$class==0,]
+  dat$inc<-RZA(dat[,1:3], deg = TRUE)
+  dat$inc_bin<-floor(dat$inc)
+  dat$dip_bin<-floor(dat$dip_deg)
+  dat<-dat[dat$inc_bin>=0&dat$inc_bin<=90,]
+  
+  dat$count<-1
+  
+  dat.sub<-rbind(data.frame(inc_bin=dat$inc_bin,
+                            dip_bin=dat$dip_bin,
+                            count=dat$count),
+                 data.frame(inc_bin=0:90,
+                            dip_bin=0:90,
+                            count=0))
+  
+  G_test<-aggregate(count~dip_bin, FUN="sum",dat.sub)
+  G_test$p<-G_test$count/sum(G_test$count)
+  # plot(G_test)
+  
+  ran_G_ls<-list()
+  for(i in 1:length(0:90)) ran_G_ls[[i]]<-data.frame(G_test[G_test$dip_bin==c(0:90)[i],],
+                                                     inc_bin=0:90)
+  G_test<-do.call(rbind, ran_G_ls)
+  
+  G_test$A_test<-abs(
+    ( 1/tan(G_test$inc_bin*(pi/180)) )*
+      ( 1/tan(G_test$dip_bin*(pi/180)) )
+  )
+  
+  G_test$A1<-
+    cos(G_test$inc_bin*(pi/180))*
+    cos(G_test$dip_bin*(pi/180))
+  
+  G_test$phi<-NA
+  G_test$phi[G_test$A_test<=1]<-acos(
+    (1/tan(G_test$inc_bin[G_test$A_test<=1]*(pi/180)))*
+      (1/tan(G_test$dip_bin[G_test$A_test<=1]*(pi/180)))
+  )
+  
+  G_test$A2<-
+    cos(G_test$inc_bin*(pi/180))*
+    cos(G_test$dip_bin*(pi/180))*
+    (1+(2/pi)*(tan(G_test$phi)-G_test$phi))
+  
+  G_test$A<-G_test$A1
+  G_test$A[G_test$A_test<=1]<-G_test$A2[G_test$A_test<=1]
+  
+  G_test$G_p<-G_test$A*G_test$p
+  
+  G_calc<-aggregate(G_p~inc_bin, 
+                    FUN= "sum", 
+                    G_test, na.rm=TRUE)
+  
+  G_calc$assumption<-"random"
+  G_calc$density<-"non-normalized"
+  
+  plot(G_calc$inc_bin,
+       G_calc$G_p)
+  
+  G_ls[[1]]<-G_calc
+  
+  G_test<-aggregate(count~inc_bin+dip_bin, FUN="sum",dat.sub)
+  p<-aggregate(count~inc_bin, FUN="sum",
+               G_test)
+  
+  G_test<-merge(G_test,p, by="inc_bin")
+  
+  G_test$p<-G_test$count.x/G_test$count.y
+  
+  G_test$A_test<-abs(
+    ( 1/tan(G_test$inc_bin*(pi/180)) )*
+      ( 1/tan(G_test$dip_bin*(pi/180)) )
+  )
+  
+  G_test$A1<-
+    cos(G_test$inc_bin*(pi/180))*
+    cos(G_test$dip_bin*(pi/180))
+  
+  G_test$phi<-NA
+  G_test$phi[G_test$A_test<=1]<-acos(
+    (1/tan(G_test$inc_bin[G_test$A_test<=1]*(pi/180)))*
+      (1/tan(G_test$dip_bin[G_test$A_test<=1]*(pi/180)))
+  )
+  
+  G_test$A2<-
+    cos(G_test$inc_bin*(pi/180))*
+    cos(G_test$dip_bin*(pi/180))*
+    (1+(2/pi)*(tan(G_test$phi)-G_test$phi))
+  
+  G_test$A<-G_test$A1
+  G_test$A[G_test$A_test<=1]<-G_test$A2[G_test$A_test<=1]
+  
+  G_test$G_p<-G_test$A*G_test$p
+  
+  G_calc<-aggregate(G_p~inc_bin, 
+                    FUN= "sum", 
+                    G_test, na.rm=TRUE)
+  
+  G_calc$assumption<-"non-random"
+  G_calc$density<-"non-normalized"
+  
+  G_ls[[2]]<-G_calc
+  
+  dat<-df@voxels
+  dat$inc<-RZA(df@voxels[,1:3], deg = TRUE)
+  dat$inc_bin<-floor(dat$inc)
+  dat$dip_bin<-floor(dat$dip_dir)
+  dat$count<-1
+  
+  dat.sub<-rbind(data.frame(inc_bin=dat$inc_bin,
+                            dip_bin=dat$dip_bin,
+                            count=dat$count),
+                 data.frame(inc_bin=0:90,
+                            dip_bin=0:90,
+                            count=0))
+  
+  G_test<-aggregate(count~dip_bin, FUN="sum",dat.sub)
+  G_test$p<-G_test$count/sum(G_test$count)
+  # plot(G_test)
+  
+  ran_G_ls<-list()
+  for(i in 1:length(0:90)) ran_G_ls[[i]]<-data.frame(G_test[G_test$dip_bin==c(0:90)[i],],
+                                                     inc_bin=0:90)
+  G_test<-do.call(rbind, ran_G_ls)
+  
+  G_test$A_test<-abs(
+    ( 1/tan(G_test$inc_bin*(pi/180)) )*
+      ( 1/tan(G_test$dip_bin*(pi/180)) )
+  )
+  
+  G_test$A1<-
+    cos(G_test$inc_bin*(pi/180))*
+    cos(G_test$dip_bin*(pi/180))
+  
+  G_test$phi<-NA
+  G_test$phi[G_test$A_test<=1]<-acos(
+    (1/tan(G_test$inc_bin[G_test$A_test<=1]*(pi/180)))*
+      (1/tan(G_test$dip_bin[G_test$A_test<=1]*(pi/180)))
+  )
+  
+  G_test$A2<-
+    cos(G_test$inc_bin*(pi/180))*
+    cos(G_test$dip_bin*(pi/180))*
+    (1+(2/pi)*(tan(G_test$phi)-G_test$phi))
+  
+  G_test$A<-G_test$A1
+  G_test$A[G_test$A_test<=1]<-G_test$A2[G_test$A_test<=1]
+  
+  G_test$G_p<-G_test$A*G_test$p
+  
+  G_calc<-aggregate(G_p~inc_bin, 
+                    FUN= "sum", 
+                    G_test, na.rm=TRUE)
+  
+  G_calc$assumption<-"random"
+  G_calc$density<-"normalized"
+  
+  G_ls[[3]]<-G_calc
+  
+  G_test<-aggregate(count~inc_bin+dip_bin, FUN="sum",dat.sub)
+  p<-aggregate(count~inc_bin, FUN="sum",
+               G_test)
+  
+  G_test<-merge(G_test,p, by="inc_bin")
+  
+  G_test$p<-G_test$count.x/G_test$count.y
+  
+  G_test$A_test<-abs(
+    ( 1/tan(G_test$inc_bin*(pi/180)) )*
+      ( 1/tan(G_test$dip_bin*(pi/180)) )
+  )
+  
+  G_test$A1<-
+    cos(G_test$inc_bin*(pi/180))*
+    cos(G_test$dip_bin*(pi/180))
+  
+  G_test$phi<-NA
+  G_test$phi[G_test$A_test<=1]<-acos(
+    (1/tan(G_test$inc_bin[G_test$A_test<=1]*(pi/180)))*
+      (1/tan(G_test$dip_bin[G_test$A_test<=1]*(pi/180)))
+  )
+  
+  G_test$A2<-
+    cos(G_test$inc_bin*(pi/180))*
+    cos(G_test$dip_bin*(pi/180))*
+    (1+(2/pi)*(tan(G_test$phi)-G_test$phi))
+  
+  G_test$A<-G_test$A1
+  G_test$A[G_test$A_test<=1]<-G_test$A2[G_test$A_test<=1]
+  
+  G_test$G_p<-G_test$A*G_test$p
+  
+  G_calc<-aggregate(G_p~inc_bin, 
+                    FUN= "sum", 
+                    G_test, na.rm=TRUE)
+  
+  G_calc$assumption<-"non-random"
+  G_calc$density<-"normalized"
+  
+  G_ls[[4]]<-G_calc
+  
+  return(do.call(rbind, G_ls))
+}
