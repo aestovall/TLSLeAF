@@ -133,17 +133,14 @@ LAvoxel<-function(dat,res = 0.1){
   return(voxels)
 }
 
-sim_LAD<-function(voxels,x,sd){
-  sim_ls<-list()
-  list_length<-length(x)
-  # pb <- txtProgressBar(min = 0, max = list_length, style = 3)
-  for(i in 1:list_length){
-    sim_ls[[i]]<-data.frame(X=voxels$X[i],Y=voxels$Y[i],Z=voxels$Z[i],
-                            a=rnorm(10, mean=x[i], sd=sd[i]))
-    # setTxtProgressBar(pb, i)
+sim_LAD<-function(voxels){
+  vox_ls<-list()
+  for(i in 1:10){
+    voxels.dup<-voxels
+    voxels.dup$a<-apply(voxels,1,FUN = function(x)  rnorm(1, mean=x[4], sd=x[5]))
+    vox_ls[[i]]<-voxels.dup
   }
-  return(data.frame(a=do.call(rbind, sim_ls)))
-  # close(pb)
+  return(do.call(rbind, vox_ls))
 }
 
 # sim_LAD<-function(voxels){
@@ -387,9 +384,9 @@ TLSLeAF<-function(input_file,
   # voxels<-voxels[voxels$Z>1,]
   
   #simulate LAD from voxel statistics
-  LAD<-sim_LAD(voxels, voxels$dip_dir,voxels$dip_dir_sd)
-  LAD<-na.exclude(LAD[LAD$a.a>=0 & LAD$a.a<=90,])
-  LAD_lim<-data.frame(a=LAD$a.a)
+  LAD<-sim_LAD(voxels)
+  LAD<-na.exclude(LAD[LAD$a>=0 & LAD$a<=90,])
+  LAD_lim<-data.frame(a=LAD$a)
 
   #fit beta function and get beta parameters from LAD
   #FIT BETA DISTRIBUTION
@@ -417,8 +414,11 @@ TLSLeAF<-function(input_file,
                    voxels=as.data.frame(voxels),
                    LAD=LAD,
                    Beta_parameters=param,
-                   beta=beta)
+                   beta=beta,
+                   G=data.frame(inc_bin=1, G_p=1,assumption="",density=""))
 
+  TLSLeAF.dat@G<-G_calculations(TLSLeAF.dat)
+  
   if(superDF) return(TLSLeAF.dat)
   
   if(clean==TRUE){
@@ -433,7 +433,8 @@ TLSLeAF.class<-setClass("TLSLeAF",representation=representation(
   voxels="data.frame",
   LAD = 'data.frame',
   Beta_parameters = "data.frame",
-  beta="data.frame"
+  beta="data.frame",
+  G="data.frame"
 ))
 
 clean.temp<-function(output_file,c2c.file){
