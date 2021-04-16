@@ -795,7 +795,7 @@ pgap.angle<-function(scan,
   return(pgap_all)
 }
 
-<<<<<<< HEAD
+
 pgap2PAI <- function(pgap_all, method=NULL, G=NULL,...){
   
   if((method != "A"| 
