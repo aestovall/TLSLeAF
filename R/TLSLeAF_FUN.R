@@ -298,7 +298,7 @@ TLSLeAF<-function(input_file,
   
   #Clear any open terminals
   # lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
-
+  
   #Calculate normals for gridded TLS point cloud
   if(!file.exists(output_file)|
      overwrite) normalCalc(input_file)
@@ -357,7 +357,7 @@ TLSLeAF<-function(input_file,
     Sys.sleep(0.1)
   }
   print("Terminal available")
-
+  
   if(!file.exists(class.file.name)&
      file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
      file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
@@ -375,7 +375,7 @@ TLSLeAF<-function(input_file,
   
   #Correct topography and calculate the LAD and vertical LAD
   if(correct.topography) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
-
+  
   # leaf angle voxelation and density normalization
   voxels<-LAvoxel(na.omit(dat[dat$z_cor>1,]), voxRes)
   
@@ -387,21 +387,21 @@ TLSLeAF<-function(input_file,
   LAD<-sim_LAD(voxels)
   LAD<-na.exclude(LAD[LAD$a>=0 & LAD$a<=90,])
   LAD_lim<-data.frame(a=LAD$a)
-
+  
   #fit beta function and get beta parameters from LAD
   #FIT BETA DISTRIBUTION
-
+  
   m<-fitdist(as.numeric(LAD_lim$a)/90,
              'beta',
              method='mme')
-
+  
   # Get alpha and beta parametrs
   alpha0 <- m$estimate[1] # parameter 1
   beta0 <- m$estimate[2] # parameter 2
   beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01),
                                                    alpha0,beta0))
   param<-data.frame(alpha0,beta0)
-
+  
   TLSLeAF.dat<-new("TLSLeAF",
                    parameters=data.frame(c(file=input_file,
                                            center,
@@ -416,7 +416,7 @@ TLSLeAF<-function(input_file,
                    Beta_parameters=param,
                    beta=beta,
                    G=data.frame(inc_bin=1, G_p=1,assumption="",density=""))
-
+  
   TLSLeAF.dat@G<-G_calculations(TLSLeAF.dat)
   
   if(superDF) return(TLSLeAF.dat)
@@ -531,7 +531,6 @@ vai_weighted <- function(a_vai, adj_z, z_res) {
   return(a_vai_weight)
 }
 
-
 G_calculations<-function(df){
   
   G_ls<-list()
@@ -553,7 +552,7 @@ G_calculations<-function(df){
   
   G_test<-aggregate(count~dip_bin, FUN="sum",dat.sub)
   G_test$p<-G_test$count/sum(G_test$count)
-  # plot(G_test)
+  plot(G_test)
   
   ran_G_ls<-list()
   for(i in 1:length(0:90)) ran_G_ls[[i]]<-data.frame(G_test[G_test$dip_bin==c(0:90)[i],],
@@ -739,3 +738,356 @@ G_calculations<-function(df){
   
   return(do.call(rbind, G_ls))
 }
+
+ptx.header<-function(input_file){
+  list(
+    name = scan,
+    col_res = as.numeric(read.csv(input_file, sep = "", skip = 0,nrows = 2, header = FALSE)[1,]),
+    row_res = as.numeric(read.csv(input_file, sep = "", skip = 0,nrows = 2, header = FALSE)[2,]),
+    scan_center = as.matrix(read.csv(input_file, sep = "", skip = 2,nrows = 1, header = FALSE)),
+    reg = as.matrix(read.csv(input_file, sep = "", skip = 3,nrows = 3, header = FALSE)),
+    trans_matrix = as.matrix(read.csv(input_file, sep = "", skip = 6,nrows = 4, header = FALSE))
+  )
+}
+
+pgap.angle<-function(scan,
+                     z_res=1,
+                     adj_z=1.6,
+                     a_range=c(10,60),
+                     a_bin = 5,
+                     plane = FALSE,...){
+  
+  #calculate inclination angle
+  inc<-RZA(scan[,1:3], deg=TRUE)
+  scan$inc<-inc
+  remove(inc)
+  
+  # zenith angle range
+  a_ls<-seq(min(a_range),max(a_range), by = a_bin) 
+  
+  
+  G_site<-G_sites[G_sites$site_lab==files_n[l],]
+  G_site$inc_bin5<-floor(G_site$inc_bin/5)*5
+  G_site<-aggregate(G_p~inc_bin5+assumption+density, FUN="mean", G_site)
+  
+  # vai_a<-list()
+  # G_sens_ls<-list()
+  lin.approx_ls<-list()
+  pgap_ls<-list()
+  
+  for (a in 1:length(a_ls)){
+    # test_ls<-list()
+    
+    scan.sub<-subset(scan,scan$inc>a_ls[a]&scan$inc<(a_ls[a]+5))
+    scan.sub<-na.exclude(scan.sub)
+    # if(nrow(scan.sub) ==0) next
+    list <- seq(floor(min(scan.sub[3])), 
+                ceiling(max(scan.sub[3])), 
+                by = z_res)
+    
+    pgap<-pgapF(scan.sub, row_res, col_res, z_res)
+    # plot(pgap)
+    
+    pgap_ls[[a]]<-data.frame(list,pgap, inc_bin=a_ls[a])
+  }
+  
+  pgap_all<-do.call(rbind, pgap_ls)
+  return(pgap_all)
+}
+
+<<<<<<< HEAD
+pgap2PAI <- function(pgap_all, method=NULL, G=NULL,...){
+  
+  if((method != "A"| 
+      method != "D") & !is.null(G)) G<-G[G$inc_bin %in% unique(pgap_all$inc_bin),]
+  
+  if( (method != "A"| 
+       method != "D") & is.null(G) ) print("No G provided!")
+  
+  if(method=="A"){
+    pgap_all$f <- cos(pgap_all$inc_bin*(pi/180))/0.5*(-1)*log(pgap_all$pgap)
+    pgap_all$G<-0.5
+  } 
+  
+  if(method=="B"){
+    pgap_all<-merge(pgap_all, G, by.x="inc_bin")
+    pgap_all$f <- cos(pgap_all$inc_bin*(pi/180))/
+      pgap_all$G*(-1)*log(pgap_all$pgap)
+  } 
+  if(method=="C"){
+    pgap_all<-merge(pgap_all, G, by.x="inc_bin")
+    pgap_all$f <- cos(pgap_all$inc_bin*(pi/180))/
+      pgap_all$G*(-1)*log(pgap_all$pgap)
+  } 
+  
+  if(method=="D"){
+    pgap_all$f <- -1*log(pgap_all$pgap)
+    pgap_all$x_theta<-2/pi*tan(pgap_all$inc_bin*(pi/180))
+    
+    temp.ls<-list()
+    for(j in 1:length(unique(pgap_all$list))){
+      temp<-pgap_all[pgap_all$list==unique(pgap_all$list)[j],]
+      temp.ls[[j]]<-data.frame(list = unique(list)[j],
+                               f=sum(coef(lm(f~x_theta,temp))),
+                               sd=sigma(lm(f~x_theta,temp)),
+                               se=sigma(lm(f~x_theta,temp))/sqrt(nrow(temp)))
+    }
+    pgap_lm<-do.call(rbind, temp.ls)
+    pgap_lm$f.cimin<-pgap_lm$f-1.96*pgap_lm$se
+    pgap_lm$f.cimax<-pgap_lm$f+1.96*pgap_lm$se
+    
+    pgap_lm<-pgap_lm[order(pgap_lm$list),]
+    pgap_lm$sd[pgap_lm$list> na.exclude(pgap_lm$list[pgap_lm$f==max(pgap_lm$f, na.rm=TRUE)])]<-0
+    pgap_lm$f.cimin[pgap_lm$list> na.exclude(pgap_lm$list[pgap_lm$f==max(pgap_lm$f, na.rm=TRUE)])]<-0
+    pgap_lm$f.cimax[pgap_lm$list> na.exclude(pgap_lm$list[pgap_lm$f==max(pgap_lm$f, na.rm=TRUE)])]<-0
+    
+    pgap_lm$f[pgap_lm$list> na.exclude(pgap_lm$list[pgap_lm$f==max(pgap_lm$f, na.rm=TRUE)])]<-max(pgap_lm$f, na.rm=TRUE)
+    
+    pgap_lm$sd[is.na(pgap_lm$f)]<-0
+    pgap_lm$f.cimin[is.na(pgap_lm$f)]<-0
+    pgap_lm$f.cimax[is.na(pgap_lm$f)]<-0
+    pgap_lm$f[is.na(pgap_lm$f)]<-0
+    
+    pgap_all<-pgap_lm
+    
+    pgap_all$f.prime.ci_min<-c((diff(pgap_all$f.cimin)/diff(pgap_all$list)),0)
+    pgap_all$f.prime.ci_max<-c((diff(pgap_all$f.cimax)/diff(pgap_all$list)),0)
+    pgap_all$f.prime.ci_min[pgap_all$f.prime==0]<-0
+    pgap_all$f.prime.ci_max[pgap_all$f.prime==0]<-0
+    
+    pgap_all$f.prime<-c((diff(pgap_all$f)/diff(pgap_all$list)),0)
+    
+    spl <- smooth.spline(x=pgap_all$list,
+                         y=pgap_all$f, 
+                         df=length(pgap_all$list)-round(0.3*length(pgap_all$list)))
+    pgap_all$pred <- predict(spl)$y
+    pgap_all$f.pred.prime <- predict(spl, deriv=1)$y
+    pgap_all$f.pred.prime[pgap_all$f.pred.prime<0]<-0
+    return(pgap_all)
+  } 
+  
+  if(method!="D"){
+    pgap_all<-lapply(unique(pgap_all$inc_bin), function(x){
+      pgap.sub<-pgap_all[pgap_all$inc_bin==x,]
+      pgap.sub$f.prime<-c((diff(pgap.sub$f)/diff(pgap.sub$list)),0)
+      
+      spl <- smooth.spline(x=pgap.sub$list,
+                           y=pgap.sub$f, 
+                           df=length(pgap.sub$list)-round(0.3*length(pgap.sub$list)))
+      pgap.sub$pred <- predict(spl)$y
+      pgap.sub$f.pred.prime <- predict(spl, deriv=1)$y
+      pgap.sub$f.pred.prime[pgap.sub$f.pred.prime<0]<-0
+      return(pgap.sub)
+    })
+    
+    return(do.call(rbind,pgap_all)) }
+}
+
+=======
+  G_calculations<-function(df){
+    
+    G_ls<-list()
+    dat<-df@dat
+    dat<-dat[dat$class==0,]
+    dat$inc<-RZA(dat[,1:3], deg = TRUE)
+    dat$inc_bin<-floor(dat$inc)
+    dat$dip_bin<-floor(dat$dip_deg)
+    dat<-dat[dat$inc_bin>=0&dat$inc_bin<=90,]
+    
+    dat$count<-1
+    
+    dat.sub<-rbind(data.frame(inc_bin=dat$inc_bin,
+                              dip_bin=dat$dip_bin,
+                              count=dat$count),
+                   data.frame(inc_bin=0:90,
+                              dip_bin=0:90,
+                              count=0))
+    
+    G_test<-aggregate(count~dip_bin, FUN="sum",dat.sub)
+    G_test$p<-G_test$count/sum(G_test$count)
+    # plot(G_test)
+    
+    ran_G_ls<-list()
+    for(i in 1:length(0:90)) ran_G_ls[[i]]<-data.frame(G_test[G_test$dip_bin==c(0:90)[i],],
+                                                       inc_bin=0:90)
+    G_test<-do.call(rbind, ran_G_ls)
+    
+    G_test$A_test<-abs(
+      ( 1/tan(G_test$inc_bin*(pi/180)) )*
+        ( 1/tan(G_test$dip_bin*(pi/180)) )
+    )
+    
+    G_test$A1<-
+      cos(G_test$inc_bin*(pi/180))*
+      cos(G_test$dip_bin*(pi/180))
+    
+    G_test$phi<-NA
+    G_test$phi[G_test$A_test<=1]<-acos(
+      (1/tan(G_test$inc_bin[G_test$A_test<=1]*(pi/180)))*
+        (1/tan(G_test$dip_bin[G_test$A_test<=1]*(pi/180)))
+    )
+    
+    G_test$A2<-
+      cos(G_test$inc_bin*(pi/180))*
+      cos(G_test$dip_bin*(pi/180))*
+      (1+(2/pi)*(tan(G_test$phi)-G_test$phi))
+    
+    G_test$A<-G_test$A1
+    G_test$A[G_test$A_test<=1]<-G_test$A2[G_test$A_test<=1]
+    
+    G_test$G_p<-G_test$A*G_test$p
+    
+    G_calc<-aggregate(G_p~inc_bin, 
+                      FUN= "sum", 
+                      G_test, na.rm=TRUE)
+    
+    G_calc$assumption<-"random"
+    G_calc$density<-"non-normalized"
+    
+    plot(G_calc$inc_bin,
+         G_calc$G_p)
+    
+    G_ls[[1]]<-G_calc
+    
+    G_test<-aggregate(count~inc_bin+dip_bin, FUN="sum",dat.sub)
+    p<-aggregate(count~inc_bin, FUN="sum",
+                 G_test)
+    
+    G_test<-merge(G_test,p, by="inc_bin")
+    
+    G_test$p<-G_test$count.x/G_test$count.y
+    
+    G_test$A_test<-abs(
+      ( 1/tan(G_test$inc_bin*(pi/180)) )*
+        ( 1/tan(G_test$dip_bin*(pi/180)) )
+    )
+    
+    G_test$A1<-
+      cos(G_test$inc_bin*(pi/180))*
+      cos(G_test$dip_bin*(pi/180))
+    
+    G_test$phi<-NA
+    G_test$phi[G_test$A_test<=1]<-acos(
+      (1/tan(G_test$inc_bin[G_test$A_test<=1]*(pi/180)))*
+        (1/tan(G_test$dip_bin[G_test$A_test<=1]*(pi/180)))
+    )
+    
+    G_test$A2<-
+      cos(G_test$inc_bin*(pi/180))*
+      cos(G_test$dip_bin*(pi/180))*
+      (1+(2/pi)*(tan(G_test$phi)-G_test$phi))
+    
+    G_test$A<-G_test$A1
+    G_test$A[G_test$A_test<=1]<-G_test$A2[G_test$A_test<=1]
+    
+    G_test$G_p<-G_test$A*G_test$p
+    
+    G_calc<-aggregate(G_p~inc_bin, 
+                      FUN= "sum", 
+                      G_test, na.rm=TRUE)
+    
+    G_calc$assumption<-"non-random"
+    G_calc$density<-"non-normalized"
+    
+    G_ls[[2]]<-G_calc
+    
+    dat<-df@voxels
+    dat$inc<-RZA(df@voxels[,1:3], deg = TRUE)
+    dat$inc_bin<-floor(dat$inc)
+    dat$dip_bin<-floor(dat$dip_dir)
+    dat$count<-1
+    
+    dat.sub<-rbind(data.frame(inc_bin=dat$inc_bin,
+                              dip_bin=dat$dip_bin,
+                              count=dat$count),
+                   data.frame(inc_bin=0:90,
+                              dip_bin=0:90,
+                              count=0))
+    
+    G_test<-aggregate(count~dip_bin, FUN="sum",dat.sub)
+    G_test$p<-G_test$count/sum(G_test$count)
+    # plot(G_test)
+    
+    ran_G_ls<-list()
+    for(i in 1:length(0:90)) ran_G_ls[[i]]<-data.frame(G_test[G_test$dip_bin==c(0:90)[i],],
+                                                       inc_bin=0:90)
+    G_test<-do.call(rbind, ran_G_ls)
+    
+    G_test$A_test<-abs(
+      ( 1/tan(G_test$inc_bin*(pi/180)) )*
+        ( 1/tan(G_test$dip_bin*(pi/180)) )
+    )
+    
+    G_test$A1<-
+      cos(G_test$inc_bin*(pi/180))*
+      cos(G_test$dip_bin*(pi/180))
+    
+    G_test$phi<-NA
+    G_test$phi[G_test$A_test<=1]<-acos(
+      (1/tan(G_test$inc_bin[G_test$A_test<=1]*(pi/180)))*
+        (1/tan(G_test$dip_bin[G_test$A_test<=1]*(pi/180)))
+    )
+    
+    G_test$A2<-
+      cos(G_test$inc_bin*(pi/180))*
+      cos(G_test$dip_bin*(pi/180))*
+      (1+(2/pi)*(tan(G_test$phi)-G_test$phi))
+    
+    G_test$A<-G_test$A1
+    G_test$A[G_test$A_test<=1]<-G_test$A2[G_test$A_test<=1]
+    
+    G_test$G_p<-G_test$A*G_test$p
+    
+    G_calc<-aggregate(G_p~inc_bin, 
+                      FUN= "sum", 
+                      G_test, na.rm=TRUE)
+    
+    G_calc$assumption<-"random"
+    G_calc$density<-"normalized"
+    
+    G_ls[[3]]<-G_calc
+    
+    G_test<-aggregate(count~inc_bin+dip_bin, FUN="sum",dat.sub)
+    p<-aggregate(count~inc_bin, FUN="sum",
+                 G_test)
+    
+    G_test<-merge(G_test,p, by="inc_bin")
+    
+    G_test$p<-G_test$count.x/G_test$count.y
+    
+    G_test$A_test<-abs(
+      ( 1/tan(G_test$inc_bin*(pi/180)) )*
+        ( 1/tan(G_test$dip_bin*(pi/180)) )
+    )
+    
+    G_test$A1<-
+      cos(G_test$inc_bin*(pi/180))*
+      cos(G_test$dip_bin*(pi/180))
+    
+    G_test$phi<-NA
+    G_test$phi[G_test$A_test<=1]<-acos(
+      (1/tan(G_test$inc_bin[G_test$A_test<=1]*(pi/180)))*
+        (1/tan(G_test$dip_bin[G_test$A_test<=1]*(pi/180)))
+    )
+    
+    G_test$A2<-
+      cos(G_test$inc_bin*(pi/180))*
+      cos(G_test$dip_bin*(pi/180))*
+      (1+(2/pi)*(tan(G_test$phi)-G_test$phi))
+    
+    G_test$A<-G_test$A1
+    G_test$A[G_test$A_test<=1]<-G_test$A2[G_test$A_test<=1]
+    
+    G_test$G_p<-G_test$A*G_test$p
+    
+    G_calc<-aggregate(G_p~inc_bin, 
+                      FUN= "sum", 
+                      G_test, na.rm=TRUE)
+    
+    G_calc$assumption<-"non-random"
+    G_calc$density<-"normalized"
+    
+    G_ls[[4]]<-G_calc
+    
+    return(do.call(rbind, G_ls))
+  }
