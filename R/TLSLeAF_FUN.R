@@ -74,15 +74,18 @@ scatter<-function(dat){
 }
 
 normalize_topography<-function(dat, res = 5){
+  defaultW <- getOption("warn")
+  options(warn = -1)
+  crs <- sp::CRS("+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs")
   colnames(dat)[1:3]<-c("X","Y","Z")
   las<-LAS(dat[,1:3])
-  crs(las)<-"+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs"
+  projection(las)<-crs
   
   r <- raster(xmn=-200, xmx=200, ymn=-200, ymx=200, resolution = res)
   topo<-grid_metrics(las, quantile(Z, 0.01), r)
   # plot(topo, col = viridis::viridis(250))
   
-  crs(topo)<-"+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs"
+  crs(topo)<-crs
   slope<-terrain(topo, opt = "slope", unit = "degrees", neighbors = 8)
   # plot(slope)
   
@@ -96,7 +99,7 @@ normalize_topography<-function(dat, res = 5){
   th <- seq(0.1, 1.5, length.out = length(ws))
   
   topo.las<-LAS(topo.df)
-  crs(topo.las)<-"+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs"
+  crs(topo.las)<-crs
   
   ground<-lasground(topo.las, pmf(ws, th), last_returns = FALSE)
   
@@ -112,11 +115,14 @@ normalize_topography<-function(dat, res = 5){
   lasclipPolygon(las, topo.las.p@polygons[[1]]@Polygons[[1]]@coords[,1], topo.las.p@polygons[[1]]@Polygons[[1]]@coords[,2])
   
   las<- las - topo.las.r
-  
+  options(warn = defaultW)
   return(las@data$Z)
 }
 
 LAvoxel<-function(dat,res = 0.1){
+  defaultW <- getOption("warn")
+  options(warn = -1)
+  
   colnames(dat)[1:3]<-c("X","Y","Z")
   dat<-dat[dat$class==0,]
   las<-LAS(dat[,1:3])
@@ -130,6 +136,7 @@ LAvoxel<-function(dat,res = 0.1){
   voxels$dip_dir_sd<-voxel_metrics(las, sd(dip_deg), res=res)[,4]
   voxels$n<-voxel_metrics(las, sum(count), res=res)[,4]
   
+  options(warn = defaultW)
   return(voxels)
 }
 
@@ -187,7 +194,7 @@ angleCalc<-function(dat, center, scatterLim=85){
   for(ii in 1:length(dat)) if (class(dat[[1,ii]])=="character") dat[,ii]<- as.numeric( dat[,ii] )
   
   #calculate the radius, zenith, and azimuth angles from XYZ coordinates
-  dat$inc<-RZA(dat)
+  dat$inc<-RZA(dat[,1:3])
   
   # estimate scattering angle and filter, removing steep angles
   dat$scatter<-scatter(dat)
@@ -197,7 +204,8 @@ angleCalc<-function(dat, center, scatterLim=85){
   #Convert normals to leaf orientation and leaf angle
   dat<-cbind(dat[,1:3],
              ConvertNormalToDipAndDipDir(dat[,8:10])[,2])
-  return(dat)
+  
+  return(dat[!is.nan(dat[,4]),])
   
 }
 
@@ -274,6 +282,160 @@ rfPrep<-function(c2c.file){
   return(dat)
 }
 
+# TLSLeAF<-function(input_file,
+#                   overwrite=TRUE,
+#                   center, 
+#                   scatterLim=85,
+#                   SS=0.02, 
+#                   scales=c(0.1,0.5,0.75),
+#                   rf_model,
+#                   correct.topography=TRUE,
+#                   voxRes,
+#                   minVoxDensity=5,
+#                   superDF=FALSE,
+#                   clean=TRUE,...){
+#   
+#   
+#   #names of output files
+#   output_file = gsub(".ptx",".asc", input_file)
+#   angle.file.name<-gsub(".ptx","_angles.asc", input_file)
+#   c2c.file<-angle.file.name
+#   class.file.name<-gsub(".ptx","_angles_class.asc", input_file)
+#   # c2c.file<-gsub(".asc","_t.asc",angle.file.name)
+#   gc()
+#   
+#   #Clear any open terminals
+#   # lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
+#   
+#   #Calculate normals for gridded TLS point cloud
+#   if(!file.exists(output_file)|
+#      overwrite) normalCalc(input_file)
+#   
+#   while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+#     rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+#     Sys.sleep(10)
+#   }
+#   print("Terminal available")
+#   # lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
+#   
+#   # if(file.size(output_file)<file.size(input_file)){
+#   #   warning(paste0("Normals calculation may have been interrupted. Please check ",
+#   #                  output_file)) 
+#   # } 
+#   
+#   #Calculate scattering angle and leaf angle
+#   if(!file.exists(angle.file.name)|
+#      overwrite){
+#     dat<-data.table::fread(output_file, header = FALSE)
+#     dat<-angleCalc(dat,
+#                    center, 
+#                    scatterLim)
+#     fwrite(dat, file = angle.file.name, sep = " ", row.names = FALSE)
+#   } 
+#   # else dat<-data.table::fread(angle.file.name, header = FALSE)
+#   
+#   # while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+#   #   rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+#   #   Sys.sleep(10)
+#   # }
+#   # print("Terminal available")
+#   
+#   
+#   # if(!file.exists(gsub(".asc","_t.asc",angle.file.name))|
+#   #    overwrite){
+#   #   cloudRotation(angle.file.name, 
+#   #                 transformationMatrix)
+#   # }
+#   
+#   # while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+#   #   rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+#   #   Sys.sleep(10)
+#   # }
+#   # print("Terminal available")
+#   
+#   #Classify wood and leaf from random forest classifier
+#   if(file.exists(c2c.file)&
+#      !(file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
+#        file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
+#        file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file)))|
+#      overwrite) classMetricCalc(c2c.file, SS, scales)
+#   
+#   while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+#     rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+#     Sys.sleep(10)
+#   }
+#   print("Terminal available")
+#   
+#   if(!file.exists(class.file.name)&
+#      file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
+#      file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
+#      file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file))&
+#      (round(file.size(gsub(".asc","_0_75_NORM.asc",c2c.file)), -7)==
+#      round(file.size(gsub(".asc","_0_50_NORM.asc",c2c.file)), -7))) {
+#     
+#       dat<-na.omit(rfPrep(c2c.file))
+#       dat$predict<-predict(rf_model, dat)
+#       dat<-cbind(dat[,1:4], dat$predict)
+#       colnames(dat)[4:5]<-c("dip_deg", "class")
+#       
+#       fwrite(dat, file = class.file.name, sep = " ", row.names = FALSE)
+#     
+#   } else Sys.sleep(10)
+#   
+#   if(file.exists(class.file.name)) dat<-fread(class.file.name)
+#   
+#   #Correct topography and calculate the LAD and vertical LAD
+#   if(correct.topography) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
+#   
+#   # leaf angle voxelation and density normalization
+#   voxels<-LAvoxel(na.omit(dat[dat$z_cor>1,]), voxRes)
+#   
+#   voxels<-voxels[voxels$n>quantile(voxels$n,0.01),]
+#   voxels<-voxels[voxels$n>minVoxDensity,]
+#   # voxels<-voxels[voxels$Z>1,]
+#   
+#   #simulate LAD from voxel statistics
+#   LAD<-sim_LAD(voxels)
+#   LAD<-na.exclude(LAD[LAD$a>=0 & LAD$a<=90,])
+#   LAD_lim<-data.frame(a=LAD$a)
+#   
+#   #fit beta function and get beta parameters from LAD
+#   #FIT BETA DISTRIBUTION
+#   
+#   m<-fitdist(as.numeric(LAD_lim$a)/90,
+#              'beta',
+#              method='mme')
+#   
+#   # Get alpha and beta parametrs
+#   alpha0 <- m$estimate[1] # parameter 1
+#   beta0 <- m$estimate[2] # parameter 2
+#   beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01),
+#                                                    alpha0,beta0))
+#   param<-data.frame(alpha0,beta0)
+#   
+#   TLSLeAF.dat<-new("TLSLeAF",
+#                    parameters=data.frame(c(file=input_file,
+#                                            center,
+#                                            scatterLim=85,
+#                                            SS=0.02,
+#                                            scales=c(0.1,0.5,0.75),
+#                                            voxRes=voxRes,
+#                                            superDF=TRUE)),
+#                    dat=dat,
+#                    voxels=as.data.frame(voxels),
+#                    LAD=LAD,
+#                    Beta_parameters=param,
+#                    beta=beta,
+#                    G=data.frame(inc_bin=1, G_p=1,assumption="",density=""))
+#   
+#   TLSLeAF.dat@G<-G_calculations(TLSLeAF.dat)
+#   
+#   if(superDF) return(TLSLeAF.dat)
+#   
+#   if(clean==TRUE){
+#     clean.temp(output_file,c2c.file)
+#   }
+# }
 TLSLeAF<-function(input_file,
                   overwrite=TRUE,
                   center, 
@@ -305,9 +467,9 @@ TLSLeAF<-function(input_file,
   
   while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
     rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
-    Sys.sleep(0.1)
+    Sys.sleep(10)
   }
-  print("Terminal available")
+  # print("Terminal available")
   # lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
   
   # if(file.size(output_file)<file.size(input_file)){
@@ -315,22 +477,26 @@ TLSLeAF<-function(input_file,
   #                  output_file)) 
   # } 
   
-  #Calculate scattering angle and leaf angle
-  if(!file.exists(angle.file.name)|
-     overwrite){
-    dat<-data.table::fread(output_file, header = FALSE)
-    dat<-angleCalc(dat,
-                   center, 
-                   scatterLim)
-    fwrite(dat, file = angle.file.name, sep = " ", row.names = FALSE)
-  } 
+    #Calculate scattering angle and leaf angle
+    if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+      rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)&
+      (!file.exists(angle.file.name)|
+       overwrite)){
+      dat<-data.table::fread(output_file, header = FALSE, 
+                             colClasses = rep('numeric',10))
+      dat<-angleCalc(dat,
+                     center,
+                     scatterLim)
+      fwrite(dat, file = angle.file.name, sep = " ", row.names = FALSE)
+      # Sys.sleep(20)
+    }
   # else dat<-data.table::fread(angle.file.name, header = FALSE)
   
-  while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
-    Sys.sleep(0.1)
-  }
-  print("Terminal available")
+  # while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+  #   rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+  #   Sys.sleep(10)
+  # }
+  # print("Terminal available")
   
   
   # if(!file.exists(gsub(".asc","_t.asc",angle.file.name))|
@@ -339,29 +505,31 @@ TLSLeAF<-function(input_file,
   #                 transformationMatrix)
   # }
   
-  while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
-    Sys.sleep(0.1)
-  }
-  print("Terminal available")
+  # while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+  #   rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+  #   Sys.sleep(10)
+  # }
+  # print("Terminal available")
   
   #Classify wood and leaf from random forest classifier
-  if(file.exists(c2c.file)&
+  if(file.exists(angle.file.name)&
      !(file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
        file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
        file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file)))|
-     overwrite) classMetricCalc(c2c.file, SS, scales)
+     overwrite) classMetricCalc(angle.file.name, SS, scales)
   
   while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
     rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
-    Sys.sleep(0.1)
+    Sys.sleep(10)
   }
   print("Terminal available")
   
   if(!file.exists(class.file.name)&
      file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
      file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
-     file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file))) {
+     file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file))&
+     (round(file.size(gsub(".asc","_0_75_NORM.asc",c2c.file)), -7)==
+      round(file.size(gsub(".asc","_0_50_NORM.asc",c2c.file)), -7))) {
     
     dat<-na.omit(rfPrep(c2c.file))
     dat$predict<-predict(rf_model, dat)
@@ -369,12 +537,14 @@ TLSLeAF<-function(input_file,
     colnames(dat)[4:5]<-c("dip_deg", "class")
     
     fwrite(dat, file = class.file.name, sep = " ", row.names = FALSE)
-  } else Sys.sleep(0.1)
-  
-  if(file.exists(class.file.name)) dat<-fread(class.file.name)
+    Sys.sleep(20)
+    
+  } else if(file.exists(class.file.name)) dat<-fread(class.file.name)
   
   #Correct topography and calculate the LAD and vertical LAD
   if(correct.topography) dat$z_cor<-normalize_topography(dat) else dat$z_cor<-dat$Z
+  
+  # if(colnames(dat)[6]=="z_cor"){
   
   # leaf angle voxelation and density normalization
   voxels<-LAvoxel(na.omit(dat[dat$z_cor>1,]), voxRes)
@@ -417,15 +587,16 @@ TLSLeAF<-function(input_file,
                    beta=beta,
                    G=data.frame(inc_bin=1, G_p=1,assumption="",density=""))
   
-  TLSLeAF.dat@G<-G_calculations(TLSLeAF.dat)
+  G<-G_calculations(TLSLeAF.dat)
+  TLSLeAF.dat@G<-G
   
   if(superDF) return(TLSLeAF.dat)
   
   if(clean==TRUE){
     clean.temp(output_file,c2c.file)
   }
+  # } else sys
 }
-
 
 TLSLeAF.class<-setClass("TLSLeAF",representation=representation(
   parameters = "data.frame",
@@ -556,7 +727,7 @@ G_calculations<-function(df){
   
   ran_G_ls<-list()
   for(i in 1:length(0:90)) ran_G_ls[[i]]<-data.frame(G_test[G_test$dip_bin==c(0:90)[i],],
-                                                     inc_bin=0:90)
+                                                     inc_bin=0:90, row.names = NULL)
   G_test<-do.call(rbind, ran_G_ls)
   
   G_test$A_test<-abs(
@@ -657,7 +828,7 @@ G_calculations<-function(df){
   
   ran_G_ls<-list()
   for(i in 1:length(0:90)) ran_G_ls[[i]]<-data.frame(G_test[G_test$dip_bin==c(0:90)[i],],
-                                                     inc_bin=0:90)
+                                                     inc_bin=0:90, row.names = NULL)
   G_test<-do.call(rbind, ran_G_ls)
   
   G_test$A_test<-abs(
@@ -755,7 +926,10 @@ pgap.angle<-function(scan,
                      adj_z=1.6,
                      a_range=c(10,60),
                      a_bin = 5,
-                     plane = FALSE,...){
+                     plane = FALSE,
+                     header,...){
+  
+  
   
   #calculate inclination angle
   inc<-RZA(scan[,1:3], deg=TRUE)
@@ -765,14 +939,6 @@ pgap.angle<-function(scan,
   # zenith angle range
   a_ls<-seq(min(a_range),max(a_range), by = a_bin) 
   
-  
-  G_site<-G_sites[G_sites$site_lab==files_n[l],]
-  G_site$inc_bin5<-floor(G_site$inc_bin/5)*5
-  G_site<-aggregate(G_p~inc_bin5+assumption+density, FUN="mean", G_site)
-  
-  # vai_a<-list()
-  # G_sens_ls<-list()
-  lin.approx_ls<-list()
   pgap_ls<-list()
   
   for (a in 1:length(a_ls)){
@@ -785,7 +951,7 @@ pgap.angle<-function(scan,
                 ceiling(max(scan.sub[3])), 
                 by = z_res)
     
-    pgap<-pgapF(scan.sub, row_res, col_res, z_res)
+    pgap<-pgapF(scan.sub, header$row_res, header$col_res, z_res)
     # plot(pgap)
     
     pgap_ls[[a]]<-data.frame(list,pgap, inc_bin=a_ls[a])
@@ -883,7 +1049,7 @@ pgap2PAI <- function(pgap_all, method=NULL, G=NULL,...){
     return(do.call(rbind,pgap_all)) }
 }
   
-=======
+
 G_calculations<-function(df){
   
   G_ls<-list()
