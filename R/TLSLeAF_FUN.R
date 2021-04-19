@@ -131,10 +131,10 @@ LAvoxel<-function(dat,res = 0.1){
   las@data$dip_deg<-dat$dip_deg
   las@data$count<-1
   
-  voxels<-voxel_metrics(las, mean(dip_deg), res=res)
+  voxels<-voxel_metrics(las, ~mean(dip_deg), res=res)
   colnames(voxels)[4]<-"dip_dir"
-  voxels$dip_dir_sd<-voxel_metrics(las, sd(dip_deg), res=res)[,4]
-  voxels$n<-voxel_metrics(las, sum(count), res=res)[,4]
+  voxels$dip_dir_sd<-voxel_metrics(las, ~sd(dip_deg), res=res)[,4]
+  voxels$n<-voxel_metrics(las, ~sum(count), res=res)[,4]
   
   options(warn = defaultW)
   return(voxels)
@@ -205,6 +205,8 @@ angleCalc<-function(dat, center, scatterLim=85){
   dat<-cbind(dat[,1:3],
              ConvertNormalToDipAndDipDir(dat[,8:10])[,2])
   
+  gc()
+  
   return(dat[!is.nan(dat[,4]),])
   
 }
@@ -263,6 +265,8 @@ classMetricCalc<-function(c2c.file, SS=0.02, scales=c(0.1,0.5,0.75)){
 }
 
 rfPrep<-function(c2c.file){
+  remove(dat)
+  gc()
   dat<-data.table::fread(gsub(".asc","_0_10_NORM.asc",c2c.file),header = FALSE)
   colnames(dat)[1:7]<-c("X","Y","Z","angle","nX10","nY10","nZ10")
   
@@ -442,7 +446,8 @@ TLSLeAF<-function(input_file,
                   scatterLim=85,
                   SS=0.02, 
                   scales=c(0.1,0.5,0.75),
-                  rf_model,
+                  # rf_model,
+                  rf_model_path,
                   correct.topography=TRUE,
                   voxRes,
                   minVoxDensity=5,
@@ -482,12 +487,18 @@ TLSLeAF<-function(input_file,
       rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)&
       (!file.exists(angle.file.name)|
        overwrite)){
+      remove(dat)
+      gc()
+      
       dat<-data.table::fread(output_file, header = FALSE, 
                              colClasses = rep('numeric',10))
       dat<-angleCalc(dat,
                      center,
                      scatterLim)
+      
       fwrite(dat, file = angle.file.name, sep = " ", row.names = FALSE)
+      
+      
       # Sys.sleep(20)
     }
   # else dat<-data.table::fread(angle.file.name, header = FALSE)
@@ -531,10 +542,21 @@ TLSLeAF<-function(input_file,
      (round(file.size(gsub(".asc","_0_75_NORM.asc",c2c.file)), -7)==
       round(file.size(gsub(".asc","_0_50_NORM.asc",c2c.file)), -7))) {
     
+    
+    remove(dat)
+    gc()
+    
+    #load the randomForest model
     dat<-na.omit(rfPrep(c2c.file))
+    
+    rf_model<-readRDS(rf_model_path)
     dat$predict<-predict(rf_model, dat)
+    remove(rf_model)
+    gc()
+    
     dat<-cbind(dat[,1:4], dat$predict)
     colnames(dat)[4:5]<-c("dip_deg", "class")
+    gc()
     
     fwrite(dat, file = class.file.name, sep = " ", row.names = FALSE)
     Sys.sleep(20)
@@ -572,6 +594,9 @@ TLSLeAF<-function(input_file,
                                                    alpha0,beta0))
   param<-data.frame(alpha0,beta0)
   
+  remove(m)
+  gc()
+  
   TLSLeAF.dat<-new("TLSLeAF",
                    parameters=data.frame(c(file=input_file,
                                            center,
@@ -586,6 +611,9 @@ TLSLeAF<-function(input_file,
                    Beta_parameters=param,
                    beta=beta,
                    G=data.frame(inc_bin=1, G_p=1,assumption="",density=""))
+  
+  remove(dat)
+  gc()
   
   G<-G_calculations(TLSLeAF.dat)
   TLSLeAF.dat@G<-G
@@ -956,7 +984,9 @@ pgap.angle<-function(scan,
     
     pgap_ls[[a]]<-data.frame(list,pgap, inc_bin=a_ls[a])
   }
-  
+  remove(scan)
+  remove(scan.sub)
+  gc()
   pgap_all<-do.call(rbind, pgap_ls)
   return(pgap_all)
 }
