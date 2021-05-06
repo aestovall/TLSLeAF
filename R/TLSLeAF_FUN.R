@@ -182,17 +182,22 @@ normalCalc<-function(input_file){
 }
 
 
-angleCalc<-function(dat, center, scatterLim=85){
+angleCalc<-function(output_file, center, scatterLim=85){
   #column naming
+  dat<-data.table::fread(output_file, header = FALSE)
   colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
   
   #Adjust coordinates to scanner center
   # dat[,1:3]<-dat[,1:3]-t(c(center))
   
   #ensures all data are numeric, avoiding errors
-  dat<-as.data.frame(dat)
-  for(ii in 1:length(dat)) if (class(dat[[1,ii]])=="character") dat[,ii]<- as.numeric( dat[,ii] )
+  for(ii in 1:length(dat)){
+    if (class(dat[[ii]])=="character"){
+      dat[[ii]]<- as.numeric( dat[[ii]] )
+    } 
+  } 
   
+  dat<-data.frame(dat)
   #calculate the radius, zenith, and azimuth angles from XYZ coordinates
   dat$inc<-RZA(dat[,1:3])
   
@@ -265,7 +270,7 @@ classMetricCalc<-function(c2c.file, SS=0.02, scales=c(0.1,0.5,0.75)){
 }
 
 rfPrep<-function(c2c.file){
-  remove(dat)
+  
   gc()
   dat<-data.table::fread(gsub(".asc","_0_10_NORM.asc",c2c.file),header = FALSE)
   colnames(dat)[1:7]<-c("X","Y","Z","angle","nX10","nY10","nZ10")
@@ -464,16 +469,16 @@ TLSLeAF<-function(input_file,
   gc()
   
   #Clear any open terminals
-  # lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
+  lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
   
   #Calculate normals for gridded TLS point cloud
   if(!file.exists(output_file)|
      overwrite) normalCalc(input_file)
   
-  while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
-    Sys.sleep(10)
-  }
+  # while (length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+  #   rstudioapi::terminalBusy(rstudioapi::terminalList())])>0) {
+  #   Sys.sleep(10)
+  # }
   # print("Terminal available")
   # lapply(rstudioapi::terminalList(),function(x) rstudioapi::terminalKill(x))
   
@@ -487,19 +492,18 @@ TLSLeAF<-function(input_file,
       rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)&
       (!file.exists(angle.file.name)|
        overwrite)){
-      remove(dat)
-      gc()
+      # remove(dat)
+      # gc()
       
-      dat<-data.table::fread(output_file, header = FALSE, 
-                             colClasses = rep('numeric',10))
-      dat<-angleCalc(dat,
+      
+      dat<-angleCalc(output_file,
                      center,
                      scatterLim)
       
       fwrite(dat, file = angle.file.name, sep = " ", row.names = FALSE)
       
       
-      # Sys.sleep(20)
+      Sys.sleep(20)
     }
   # else dat<-data.table::fread(angle.file.name, header = FALSE)
   
@@ -543,9 +547,6 @@ TLSLeAF<-function(input_file,
       round(file.size(gsub(".asc","_0_50_NORM.asc",c2c.file)), -7))) {
     
     
-    remove(dat)
-    gc()
-    
     #load the randomForest model
     dat<-na.omit(rfPrep(c2c.file))
     
@@ -556,7 +557,6 @@ TLSLeAF<-function(input_file,
     
     dat<-cbind(dat[,1:4], dat$predict)
     colnames(dat)[4:5]<-c("dip_deg", "class")
-    gc()
     
     fwrite(dat, file = class.file.name, sep = " ", row.names = FALSE)
     Sys.sleep(20)
@@ -960,19 +960,19 @@ pgap.angle<-function(scan,
   
   
   #calculate inclination angle
-  inc<-RZA(scan[,1:3], deg=TRUE)
+  inc<-RZA(scan, deg=TRUE)
   scan$inc<-inc
   remove(inc)
+  gc()
+  gc()
   
   # zenith angle range
   a_ls<-seq(min(a_range),max(a_range), by = a_bin) 
   
   pgap_ls<-list()
   
-  for (a in 1:length(a_ls)){
-    # test_ls<-list()
-    
-    scan.sub<-subset(scan,scan$inc>a_ls[a]&scan$inc<(a_ls[a]+5))
+  pgap_ls<-lapply(a_ls, function(x){
+    scan.sub<-subset(scan,scan$inc>x&scan$inc<(x+a_bin))
     scan.sub<-na.exclude(scan.sub)
     # if(nrow(scan.sub) ==0) next
     list <- seq(floor(min(scan.sub[3])), 
@@ -982,10 +982,12 @@ pgap.angle<-function(scan,
     pgap<-pgapF(scan.sub, header$row_res, header$col_res, z_res)
     # plot(pgap)
     
-    pgap_ls[[a]]<-data.frame(list,pgap, inc_bin=a_ls[a])
-  }
+    remove(scan.sub)
+    gc()
+    
+    return(data.frame(list,pgap, inc_bin=x))
+  })
   remove(scan)
-  remove(scan.sub)
   gc()
   pgap_all<-do.call(rbind, pgap_ls)
   return(pgap_all)
