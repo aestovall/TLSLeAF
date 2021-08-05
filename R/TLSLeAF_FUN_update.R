@@ -77,6 +77,7 @@ scatter<-function(x){
 }
 
 normalize_topography<-function(x, res = 5){
+  las<-NULL
   # defaultW <- getOption("warn")
   # options(warn = -1)
   # crs_tls <- sp::CRS("+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs")
@@ -196,14 +197,14 @@ normalize_topography<-function(x, res = 5){
   # options(warn = defaultW)
   return(las@data)
   
-  remove(las)
+  # remove(las)
   
 }
 
 LAvoxel<-function(x,res = 0.1){
   # defaultW <- getOption("warn")
   # options(warn = -1)
-  
+  las<-NULL
   colnames(x)[1:3]<-c("X","Y","Z")
   x<-x[x$class==0,]
   crs_tls<-sp::CRS("+init=epsg:26918")
@@ -273,6 +274,8 @@ normalCalc<-function(input_file){
 angleCalc<-function(output_file, center, scatterLim=85){
   #column naming
   # dat<-data.table::fread(output_file, header = FALSE)
+  dat<-NULL
+  gc()
   dat<-vroom(output_file, delim = " ", 
              col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"), 
              # col_types= cols(),
@@ -301,13 +304,13 @@ angleCalc<-function(output_file, center, scatterLim=85){
   dat<-na.omit(dat)
   
   #Convert normals to leaf orientation and leaf angle
-  dat<-cbind(dat[,1:3],
+  dat.out<-cbind(dat[,1:3],
              ConvertNormalToDipAndDipDir(dat[,8:10])[,2])
   
   gc()
   
-  return(dat[!is.nan(dat[,4]),])
-  remove(dat)
+  return(dat.out[!is.nan(dat.out[,4]),])
+  remove(dat, dat.out)
   
 }
 
@@ -366,12 +369,15 @@ classMetricCalc<-function(c2c.file, SS=0.02, scales=c(0.1,0.5,0.75)){
 
 rfPrep<-function(c2c.file){
   
+  dat.temp<-dat.temp1<-dat.temp2<-dat.temp3<-NA
+  gc()
   # dat.temp1<-data.table::fread(gsub(".asc","_0_10_NORM.asc",c2c.file),header = FALSE)
   # dat.temp1<-readr::read_table(gsub(".asc","_0_10_NORM.asc",c2c.file))
   dat.temp1<-vroom(gsub(".asc","_0_10_NORM.asc",c2c.file),
                    col_names = c("X","Y","Z","angle","nX10","nY10","nZ10"),
                    col_types = c(X='d',Y='d',Z='d',angle='d',
                                  nX10='d',nY10='d',nZ10='d'))
+  
   # colnames(dat.temp1)[1:7]<-c(X='d',Y='d',Z='d',angle='d',
   #                             nX10='d',nY10='d',nZ10='d')
   
@@ -399,9 +405,9 @@ rfPrep<-function(c2c.file){
   #   } 
   # } 
   
-  dat.temp<-as.data.frame(dat.temp)
-  return(dat.temp)
-  rm(dat.temp)
+  return(as.data.frame(dat.temp))
+  remove(dat.temp)
+  gc()
 }
 
 # TLSLeAF<-function(input_file,
@@ -570,31 +576,50 @@ angleCalcWrite<-function(output_file, center, scatterLim, angle.file.name){
   remove(dat.angle)
 }
 
-rf_predict<-function(c2c.file, rf_model, class.file.name){
+rf_predict<-function(c2c.file, 
+                     # rf_model,
+                     rf_model_path,
+                     class.file.name){
+  dat.rf<-dat.rf.out<-NULL
+  gc()
+  
+  rf_model<-NULL
+  rf_model<-readRDS(rf_model_path)
+  
   dat.rf<-as.data.frame(na.omit(rfPrep(c2c.file)))
   dat.rf$predict<-predict(rf_model, dat.rf)
   
-  dat.rf<-cbind(dat.rf[,1:4], dat.rf$predict)
-  colnames(dat.rf)[4:5]<-c("dip_deg", "class")
+  rf_model<-NULL
+  gc()
   
-  data.table::fwrite(dat.rf, file = class.file.name, sep = " ", row.names = FALSE)
+  dat.rf.out<-cbind(dat.rf[,1:4], dat.rf$predict)
+  colnames(dat.rf.out)[4:5]<-c("dip_deg", "class")
+  
+  remove(dat.rf)
+  gc()
+  
+  data.table::fwrite(dat.rf.out, file = class.file.name, sep = " ", row.names = FALSE)
+  remove(dat.rf.out)
+  dat.rf<-dat.rf.out<-NULL
+  gc()
 }
 
 voxel_beta_fit<-function(class.file.name, 
          voxRes=0.1, 
          minVoxDensity=5, 
          correct.topography=TRUE){
-  
-  dat.class<-vroom(class.file.name, delim = " ", 
+  dat.class.in<-NULL
+  gc()
+  dat.class.in<-vroom::vroom(class.file.name, delim = " ", 
                    col_names = c("X","Y","Z", "dip_deg","class"), 
                    col_types= c(X='d',Y='d',Z='d',dip_deg='d',class='i'),
                    progress=FALSE, skip=1)
   
   # if(file.exists(class.file.name)) dat.class<-vroom(class.file.name)
-  
+  dat.class<-NULL
   print("Correct topography...")
   #Correct topography and calculate the LAD and vertical LAD
-  if(correct.topography) dat.class<-normalize_topography(dat.class) else dat.class$Z<-dat.class$Z
+  if(correct.topography) dat.class<-normalize_topography(dat.class.in) else dat.class<-dat.class.in$Z
   print("Done")
   # fwrite(dat.class,  file = gsub(".asc", "_topo_correct.asc",class.file.name),
   #        sep = " ", row.names = FALSE)
@@ -627,7 +652,7 @@ voxel_beta_fit<-function(class.file.name,
     #FIT BETA DISTRIBUTION
     
     # get_beta<-function(x){
-    
+    m<-NULL
     print("Fit Beta distribution to LAD...")
     # if (nrow(LAD_lim)>1){
     m <- fitdistrplus::fitdist(as.numeric(LAD_lim$a)/90, 'beta', method='mle')
@@ -646,6 +671,7 @@ voxel_beta_fit<-function(class.file.name,
            sep = " ", row.names = FALSE)
     
     remove(m)
+    gc()
     # } 
   }
     
@@ -660,15 +686,15 @@ TLSLeAF<-function(input_file,
                   scatterLim=85,
                   SS=0.02, 
                   scales=c(0.1,0.5,0.75),
-                  rf_model,
-                  # rf_model_path,
+                  # rf_model,
+                  rf_model_path,
                   correct.topography=TRUE,
                   voxRes = 0.1,
                   minVoxDensity=5,
                   superDF=TRUE,
                   clean=TRUE,...){
   
-  keep.vars<-ls()
+  # keep.vars<-ls()
   
   print(paste0("Processing ", input_file))
   
@@ -727,7 +753,9 @@ TLSLeAF<-function(input_file,
      file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file))) {
     
     print("Classifying leaf and wood points...")
-    rf_predict(c2c.file=c2c.file, rf_model = rf_model,
+    rf_predict(c2c.file=c2c.file, 
+               # rf_model = rf_model,
+               rf_model_path = rf_model_path,
                class.file.name=class.file.name)
     
     # # remove(dat.rf)
@@ -766,45 +794,65 @@ TLSLeAF<-function(input_file,
   
   # param<-get_beta(LAD_lim$a)
  
-  
-  # TLSLeAF.dat<-new("TLSLeAF",
-  #                  parameters=data.frame(c(file=input_file,
-  #                                          center,
-  #                                          scatterLim=85,
-  #                                          SS=0.02,
-  #                                          scales=c(0.1,0.5,0.75),
-  #                                          voxRes=voxRes,
-  #                                          superDF=TRUE)),
-  #                  dat=as.data.frame(dat.class),
-  #                  voxels=as.data.frame(voxels),
-  #                  LAD=LAD,
-  #                  Beta_parameters=param,
-  #                  beta=beta,
-  #                  G=data.frame(inc_bin=1, G_p=1,assumption="",density=""))
-  
-  # remove(dat)
-  # remove(dat.class)
-  # remove(voxels)
-  # remove(LAD)
-  # gc()
-  
-  # G<-NULL
-  
   G_calculations(dat=class.file.name,
                  LAD=gsub(".asc", "_LAD.txt",class.file.name),
                  voxels=gsub(".asc", "_voxels.asc",class.file.name))
-  # 
-  # while(is.null(G)) Sys.sleep(1) 
-  # 
-  # TLSLeAF.dat@G<-G
-  # 
-  # remove(G)
+  
+  
+  if (superDF){
+    
+    dat.class<-fread(class.file.name)
+    LAD<-fread(gsub(".asc", "_LAD.txt",class.file.name))
+    voxels<-fread(gsub(".asc", "_voxels.asc",class.file.name))
+    G<-fread(gsub("angles_class_voxels.asc", "G_function.txt",gsub(".asc", "_voxels.asc",class.file.name)))
+    
+    # get_beta<-function(x){
+    m<-NULL
+    print("Fit Beta distribution to LAD...")
+    # if (nrow(LAD_lim)>1){
+    m <- fitdistrplus::fitdist(as.numeric(LAD$a)/90, 'beta', method='mle')
+    
+    # Get alpha and beta parametrs
+    alpha0 <- m$estimate[1] # parameter 1
+    beta0 <- m$estimate[2] # parameter 2
+    beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01),
+                                                     alpha0,beta0))
+    param<-data.frame(alpha0,beta0)
+    
+    TLSLeAF.dat<-new("TLSLeAF",
+                     parameters=data.frame(c(file=input_file,
+                                             center,
+                                             scatterLim=85,
+                                             SS=0.02,
+                                             scales=c(0.1,0.5,0.75),
+                                             voxRes=voxRes,
+                                             superDF=TRUE)),
+                     dat=as.data.frame(dat.class),
+                     voxels=as.data.frame(voxels),
+                     LAD=LAD,
+                     Beta_parameters=param,
+                     beta=beta,
+                     G=G)
+    
+    remove(dat)
+    remove(dat.class)
+    remove(voxels)
+    remove(LAD)
+    gc()
+  }
+  
+
+  remove(G)
   
   if(clean){
     clean.temp(output_file,c2c.file, clean=TRUE)
   }
  
-  # if(superDF) return(TLSLeAF.dat)
+  # return(TLSLeAF.dat)
+  if(superDF) return(TLSLeAF.dat)
+  
+  plot(density(TLSLeAF.dat@LAD$a), main="LAD")
+  plot(TLSLeAF.dat@G[,1:2], main="G-functions")
   
 }
 
@@ -1492,8 +1540,9 @@ G_calculations<-function(dat,
   
   G_ls<-list()
   if(file.exists(dat)){
-  
-    dat<-fread(dat, sep=" ")
+    # dat<-NULL
+    gc()
+    dat<-fread(dat)
     dat<-dat[dat$class==0,]
     
     if(nrow(dat)>0){
@@ -1602,10 +1651,10 @@ G_calculations<-function(dat,
       
       G_ls[[2]]<-G_calc
     } 
-    }
+  }
   
   if(file.exists(voxels)){
-    dat<-read.csv(voxels, sep =" ")
+    dat<-fread(voxels)
     if(nrow(dat)>0){
       
       dat$inc<-RZA(dat[,1:3], deg = TRUE)
@@ -1706,12 +1755,14 @@ G_calculations<-function(dat,
       G_calc$density<-"normalized"
       
       G_ls[[4]]<-G_calc
-      }
     }
+  }
   
   fwrite(do.call(rbind, G_ls),
          file = gsub("angles_class_voxels.asc", "G_function.txt",voxels),
          sep= " ")
-  
+  dat<-NULL
+  G_ls<-NULL
+  gc()
   # return(do.call(rbind, G_ls))
 }
