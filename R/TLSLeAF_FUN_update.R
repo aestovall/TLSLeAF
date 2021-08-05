@@ -834,7 +834,7 @@ TLSLeAF<-function(input_file,
                      beta=beta,
                      G=G)
     
-    remove(dat)
+    # remove(dat)
     remove(dat.class)
     remove(voxels)
     remove(LAD)
