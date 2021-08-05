@@ -74,10 +74,10 @@ library(vroom)
 
 #load the randomForest model
 rf_model<-readRDS("leaf_wood_class_RF.rds")
-# rf_model_path<-"leaf_wood_class_RF.rds"
+rf_model_path<-"leaf_wood_class_RF.rds"
 
 #load TLSLeAF functions
-source('R/TLSLeAF_FUN_update.R')
+source('R/TLSLeAF_FUN_update_v2.R')
 
 # create directories
 if(!dir.exists("input")) dir.create("input")
