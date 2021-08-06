@@ -1,5 +1,7 @@
 ConvertNormalToDipAndDipDir<-function(x) {
   
+  Nsign<-dipDir_rad<-dip_rad<-dip_deg<-NULL
+  
   colnames(x) <- c("nX","nY","nZ")
   
   # The formula using atan2() with the swapped N.x and N.y already
@@ -32,6 +34,8 @@ ConvertNormalToDipAndDipDir<-function(x) {
 
 
 RZA<-function (dat, deg = FALSE){
+  r<-inc<-NULL
+  
   colnames(dat)[1:3] <- c("X","Y","Z")
   r <- sqrt(dat$X^2 + dat$Y^2 +dat$Z^2)
   
@@ -52,6 +56,7 @@ RZA<-function (dat, deg = FALSE){
 }
 
 scatter<-function(x){
+  my.dt<-NULL
   # time<-Sys.time()
   x[,12:14]<-x[,1:3]/sqrt(rowSums(x[,1:3]^2))
   x$dot<-geometry::dot(x[,12:14],x[,c('nX','nY','nZ')],d=2)
@@ -63,7 +68,8 @@ scatter<-function(x){
 }
 
 normalize_topography<-function(x, res = 5){
-  las<-NULL
+  las<-r<-topo<-topo.df<-ground<-topo.las.r<-r.p<-topo.p<-slope<-poly.id<-NULL
+  
   # defaultW <- getOption("warn")
   # options(warn = -1)
   # crs_tls <- sp::CRS("+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=6371007 +b=6371007 +units=m +no_defs")
@@ -131,7 +137,7 @@ normalize_topography<-function(x, res = 5){
 LAvoxel<-function(x,res = 0.1){
   # defaultW <- getOption("warn")
   # options(warn = -1)
-  las<-NULL
+  las<-voxels<-NULL
   colnames(x)[1:3]<-c("X","Y","Z")
   x<-x[x$class==0,]
   crs_tls<-sp::CRS("+init=epsg:26918")
@@ -155,6 +161,7 @@ LAvoxel<-function(x,res = 0.1){
 }
 
 sim_LAD<-function(x){
+  voxels.dup<-NULL
   vox_ls<-list()
   for(i in 1:10){
     voxels.dup<-x
@@ -192,6 +199,7 @@ normalCalc<-function(input_file){
                   "-COMPUTE_NORMALS",
                   "-O", input_file, #open the subsampled file
                   "-SAVE_CLOUDS",
+                  "-CLEAR",
                   sep = " "))
   
   while (term==1) sys.sleep(10)
@@ -201,7 +209,7 @@ normalCalc<-function(input_file){
 angleCalc<-function(output_file, center, scatterLim=85){
   #column naming
   # dat<-data.table::fread(output_file, header = FALSE)
-  dat<-NULL
+  dat<-dat.out<-NULL
   gc()
   dat<-vroom(output_file, delim = " ", 
              col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"), 
@@ -247,6 +255,7 @@ cloudRotation<-function(angle.file.name, transformationMatrix){
                   "-O", angle.file.name, #open the subsampled file
                   "-APPLY_TRANS", "transformation_temp.txt",
                   "-SAVE_CLOUDS", "FILE", gsub(".asc","_t.asc",angle.file.name),
+                  "-CLEAR",
                   sep = " "))  
   
   while (term==1) sys.sleep(10)
@@ -271,6 +280,7 @@ classMetricCalc<-function(c2c.file, SS=0.02, scales=c(0.1,0.5,0.75)){
                   "-SAVE_CLOUDS","FILE", gsub(".asc","_0_50_NORM.asc",c2c.file),
                   "-OCTREE_NORMALS", scales[3],
                   "-SAVE_CLOUDS", "FILE", gsub(".asc","_0_75_NORM.asc",c2c.file),
+                  "-CLEAR",
                   sep = " "))  
   
   while (term==1) sys.sleep(10)
@@ -279,14 +289,15 @@ classMetricCalc<-function(c2c.file, SS=0.02, scales=c(0.1,0.5,0.75)){
 
 rfPrep<-function(c2c.file){
   
-  dat.temp<-dat.temp1<-dat.temp2<-dat.temp3<-NA
+  dat.temp<-dat.temp1<-dat.temp2<-dat.temp3<-NULL
   gc()
   # dat.temp1<-data.table::fread(gsub(".asc","_0_10_NORM.asc",c2c.file),header = FALSE)
   # dat.temp1<-readr::read_table(gsub(".asc","_0_10_NORM.asc",c2c.file))
   dat.temp1<-vroom(gsub(".asc","_0_10_NORM.asc",c2c.file),
                    col_names = c("X","Y","Z","angle","nX10","nY10","nZ10"),
                    col_types = c(X='d',Y='d',Z='d',angle='d',
-                                 nX10='d',nY10='d',nZ10='d'))
+                                 nX10='d',nY10='d',nZ10='d'),
+                   altrep = FALSE)
   
   # colnames(dat.temp1)[1:7]<-c(X='d',Y='d',Z='d',angle='d',
   #                             nX10='d',nY10='d',nZ10='d')
@@ -295,26 +306,30 @@ rfPrep<-function(c2c.file){
   dat.temp2<-vroom(gsub(".asc","_0_50_NORM.asc",c2c.file), 
                    col_select = c(5,6,7),
                    col_names = c("X","Y","Z","angle","nX50","nY50","nZ50"),
-                   col_types = c(nX50='d',nY50='d',nZ50='d'))
+                   col_types = c(nX50='d',nY50='d',nZ50='d'),
+                   altrep = FALSE)
   # colnames(dat.temp2)[1:3]<-c("nX50","nY50","nZ50")
   
   # dat.temp3<-data.table::fread(gsub(".asc","_0_75_NORM.asc",c2c.file), select = c(5,6,7),header = FALSE)
   dat.temp3<-vroom(gsub(".asc","_0_75_NORM.asc",c2c.file), 
                    col_select = c(5,6,7),
                    col_names = c("X","Y","Z","angle","nX75","nY75","nZ75"),
-                   col_types = c(nX75='d',nY75='d',nZ75='d'))
+                   col_types = c(nX75='d',nY75='d',nZ75='d'),
+                   altrep = FALSE)
   
-  dat.temp<-cbind(dat.temp1,dat.temp2,dat.temp3)
+  dat.temp<-as.data.frame(cbind(dat.temp1,dat.temp2,dat.temp3))
   remove(dat.temp1,dat.temp2,dat.temp3)
   gc()
 
-  return(as.data.frame(dat.temp))
+  # return(dat.temp)
+  # data.table::fwrite(dat.temp, file = gsub(".asc.",".asc",c2c.file), sep = " ", row.names = FALSE)
   remove(dat.temp)
   gc()
 }
 
 
 angleCalcWrite<-function(output_file, center, scatterLim, angle.file.name){
+  dat.angle<-NULL
   dat.angle<-angleCalc(output_file,
                        center,
                        scatterLim)
@@ -326,19 +341,23 @@ angleCalcWrite<-function(output_file, center, scatterLim, angle.file.name){
 }
 
 rf_predict<-function(c2c.file, 
-                     # rf_model,
+                     rf_model,
                      rf_model_path,
                      class.file.name){
   dat.rf<-dat.rf.out<-NULL
   gc()
   
-  rf_model<-NULL
-  rf_model<-readRDS(rf_model_path)
+  if(is.null(rf_model)){
+    rf_model<-NULL
+    rf_model<-readRDS(rf_model_path)
+  }
   
+
+  # dat.rf<-as.data.frame(na.omit(rfPrep(c2c.file)))
   dat.rf<-as.data.frame(na.omit(rfPrep(c2c.file)))
   dat.rf$predict<-predict(rf_model, dat.rf)
   
-  rf_model<-NULL
+  # rf_model<-NULL
   gc()
   
   dat.rf.out<-cbind(dat.rf[,1:4], dat.rf$predict)
@@ -357,12 +376,13 @@ voxel_beta_fit<-function(class.file.name,
                          voxRes=0.1, 
                          minVoxDensity=5, 
                          correct.topography=TRUE){
-  dat.class.in<-NULL
+  dat.class.in<-voxels<-LAD<-LAD_lim<-m<-beta<-NULL
   gc()
   dat.class.in<-vroom::vroom(class.file.name, delim = " ", 
                              col_names = c("X","Y","Z", "dip_deg","class"), 
                              col_types= c(X='d',Y='d',Z='d',dip_deg='d',class='i'),
-                             progress=FALSE, skip=1)
+                             progress=FALSE, skip=1,
+                             altrep = FALSE)
   
   # if(file.exists(class.file.name)) dat.class<-vroom(class.file.name)
   dat.class<-NULL
@@ -424,7 +444,7 @@ voxel_beta_fit<-function(class.file.name,
     # } 
   }
   
-  gc()
+  # gc()
 }
 
 
@@ -435,8 +455,8 @@ TLSLeAF<-function(input_file,
                   scatterLim=85,
                   SS=0.02, 
                   scales=c(0.1,0.5,0.75),
-                  # rf_model,
-                  rf_model_path,
+                  rf_model=NULL,
+                  rf_model_path=NULL,
                   correct.topography=TRUE,
                   voxRes = 0.1,
                   minVoxDensity=5,
@@ -485,15 +505,16 @@ TLSLeAF<-function(input_file,
      file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
      file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
      file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file))) {
-    
+
     print("Classifying leaf and wood points...")
-    rf_predict(c2c.file=c2c.file, 
-               # rf_model = rf_model,
+    rf_predict(c2c.file=c2c.file,
+               rf_model,
                rf_model_path = rf_model_path,
                class.file.name=class.file.name)
-    
-    
-  } 
+
+
+  }
+  
   status<-TRUE
   # else 
   print("Done")
@@ -513,6 +534,8 @@ TLSLeAF<-function(input_file,
   
   
   if (superDF){
+    
+    dat.class<-LAD<-voxels<-G<-m<-beta<-NULL
     
     dat.class<-fread(class.file.name)
     LAD<-fread(gsub(".asc", "_LAD.txt",class.file.name))
@@ -564,8 +587,8 @@ TLSLeAF<-function(input_file,
   # return(TLSLeAF.dat)
   if(superDF) return(TLSLeAF.dat)
   
-  plot(density(TLSLeAF.dat@LAD$a), main="LAD")
-  plot(TLSLeAF.dat@G[,1:2], main="G-functions")
+  # plot(density(TLSLeAF.dat@LAD$a), main="LAD")
+  # plot(TLSLeAF.dat@G[,1:2], main="G-functions")
   
 }
 
@@ -595,7 +618,7 @@ clean.temp<-function(output_file, c2c.file, clean=TRUE){
 
 
 pgapF<-function (tls.scan.sub, row_res, col_res, z_res) {
-  
+  total<-list<-pgap<-NULL
   total<-(row_res/150)*col_res*5
   list <- seq(floor(min(tls.scan.sub[3])), 
               ceiling(max(tls.scan.sub[3])), 
