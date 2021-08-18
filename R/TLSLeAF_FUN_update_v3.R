@@ -213,10 +213,26 @@ normalCalc<-function(input_file){
 }
 
 
-angleCalc<-function(output_file, center, scatterLim=85){
+readTLSnorms<-function(output_file){
+  
+  # dat<-data.table::fread(output_file, header = FALSE)
+
+dat<-vroom(output_file, delim = " ",
+           col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"),
+           # col_types= cols(),
+           col_types= c(X='d',Y='d',Z='d', R='i',G='i',B='i',I='d',
+                        nX='d',nY='d',nZ='d'),
+           progress=FALSE)
+# colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
+
+return(dat)
+
+}
+
+angleCalc<-function(dat, center, scatterLim=85){
   #column naming
-  dat<-dat.out<-NULL
-  dat<-data.table::fread(output_file, header = FALSE)
+  # dat<-dat.out<-NULL
+  # dat<-data.table::fread(output_file, header = FALSE)
   
   gc()
   # dat<-vroom(output_file, delim = " ", 
@@ -225,7 +241,7 @@ angleCalc<-function(output_file, center, scatterLim=85){
   #            col_types= c(X='d',Y='d',Z='d', R='i',G='i',B='i',I='d',
   #                         nX='d',nY='d',nZ='d'),
   #            progress=FALSE)
-  colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
+  # colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
   
   # dat$dipDir_deg <- (pi+dat$dipDir_rad) * (180/pi)
   # dat$dip_deg <- (pi+dat$dip_rad) * (180/pi)
@@ -337,7 +353,7 @@ rfPrep<-function(c2c.file){
   dat.temp<-as.data.frame(cbind(dat.temp1,dat.temp2,dat.temp3))
   remove(dat.temp1,dat.temp2,dat.temp3)
   gc()
-
+  
   # return(dat.temp)
   data.table::fwrite(dat.temp, file = gsub(".asc","_rf_prep.asc",c2c.file), sep = " ", row.names = FALSE)
   remove(dat.temp)
@@ -374,7 +390,7 @@ rf_predict<-function(c2c.file,
     rf_model<-readRDS(rf_model_path)
   }
   
-
+  
   # dat.rf<-as.data.frame(na.omit(rfPrep(c2c.file)))
   dat.rf<-as.data.frame(na.omit(fread(gsub(".asc","_rf_prep.asc",c2c.file))))
   dat.rf$predict<-predict(rf_model, dat.rf)
@@ -490,8 +506,6 @@ TLSLeAF<-function(input_file,
   
   # keep.vars<-ls()
   
-  print(paste0("Processing ", input_file))
-  
   #names of output files
   output_file = gsub(".ptx",".asc", input_file)
   angle.file.name<-gsub(".ptx","_angles.asc", input_file)
@@ -516,8 +530,22 @@ TLSLeAF<-function(input_file,
     # remove(dat)
     # gc()
     
+    dat<-readTLSnorms(output_file)
+    
+    dat.angle<-angleCalc(dat,
+                         center,
+                         scatterLim)
+    
+    fwrite(dat.angle, file = angle.file.name, 
+           sep = " ", row.names = FALSE)
+    
+    remove(dat,dat.angle)
+    gc()
+    
     # print("Calculating surface angles...")
-    angleCalcWrite(output_file, center, scatterLim, angle.file.name)
+    # angleCalcWrite(output_file, center, scatterLim, angle.file.name)
+    
+    
     
   }
   print("Done")
@@ -549,14 +577,14 @@ TLSLeAF<-function(input_file,
   
   if(!file.exists(class.file.name)&
      file.exists(gsub(".asc","_rf_prep.asc",c2c.file))) {
-
+    
     print("Classifying leaf and wood points...")
     rf_predict(c2c.file=c2c.file,
                rf_model,
                rf_model_path = rf_model_path,
                class.file.name=class.file.name)
-
-
+    
+    
   }
   
   status<-TRUE
@@ -576,7 +604,6 @@ TLSLeAF<-function(input_file,
   print("Done")
   
   
-  
   print("Calculating G-function...")
   if(file.exists(class.file.name)&
      file.exists(gsub(".asc", "_LAD.txt",class.file.name))&
@@ -586,34 +613,34 @@ TLSLeAF<-function(input_file,
                    voxels=gsub(".asc", "_voxels.asc",class.file.name))
   }
   
-  # while(!file.exists(gsub(".asc", paste("_Beta_distribution_alpha_", 
+  # while(!file.exists(gsub(".asc", paste("_Beta_distribution_alpha_",
   #                                       round(param[1],2),"_beta_",round(param[2],2),
   #                                       ".txt", sep=""),class.file.name))) Sys.sleep(5)
-  
+
   if (superDF){
-    
+
     dat.class<-LAD<-voxels<-G<-m<-beta<-NULL
-    
+
     dat.class<-fread(class.file.name)
     LAD<-fread(gsub(".asc", "_LAD.txt",class.file.name))
     voxels<-fread(gsub(".asc", "_voxels.asc",class.file.name))
     G<-fread(gsub("angles_class_voxels.asc", "G_function.txt",gsub(".asc", "_voxels.asc",class.file.name)))
-    
+
     # get_beta<-function(x){
     m<-NULL
     print("Fit Beta distribution to LAD...")
     # if (nrow(LAD_lim)>1){
     m <- fitdistrplus::fitdist(as.numeric(LAD$a)/90, 'beta', method='mle')
-    
+
     # Get alpha and beta parametrs
     alpha0 <- m$estimate[1] # parameter 1
     beta0 <- m$estimate[2] # parameter 2
     beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01),
                                                      alpha0,beta0))
     param<-data.frame(alpha0,beta0)
-    
+
     print("Finalizing TLSLeAF object...")
-    
+
     TLSLeAF.dat<-new("TLSLeAF",
                      parameters=data.frame(c(file=input_file,
                                              center,
@@ -628,7 +655,7 @@ TLSLeAF<-function(input_file,
                      Beta_parameters=param,
                      beta=beta,
                      G=G)
-    
+
     # remove(dat)
     remove(dat.class)
     remove(voxels)
@@ -636,21 +663,10 @@ TLSLeAF<-function(input_file,
     gc()
     return(TLSLeAF.dat)
     
-  }
-  
-  
-  # remove(G)
-  
-  if(clean){
-    clean.temp(output_file,c2c.file, clean=TRUE)
-  }
-  
-  # return(TLSLeAF.dat)
-  # if(superDF) return(TLSLeAF.dat)
-  
-  # plot(density(TLSLeAF.dat@LAD$a), main="LAD")
-  # plot(TLSLeAF.dat@G[,1:2], main="G-functions")
-  
+    if(clean){
+      clean.temp(output_file,c2c.file, clean=TRUE)
+    }
+    
 }
 
 TLSLeAF.class<-setClass("TLSLeAF",representation=representation(

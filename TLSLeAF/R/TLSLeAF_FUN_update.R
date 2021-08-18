@@ -610,7 +610,7 @@ voxel_beta_fit<-function(class.file.name,
          correct.topography=TRUE){
   dat.class.in<-NULL
   gc()
-  dat.class.in<-vroom::vroom(class.file.name, delim = " ", 
+  dat.class.in<-vroom(class.file.name, delim = " ", 
                    col_names = c("X","Y","Z", "dip_deg","class"), 
                    col_types= c(X='d',Y='d',Z='d',dip_deg='d',class='i'),
                    progress=FALSE, skip=1)
@@ -694,7 +694,7 @@ TLSLeAF<-function(input_file,
                   superDF=TRUE,
                   clean=TRUE,...){
   
-  # keep.vars<-ls()
+  keep.vars<-ls()
   
   print(paste0("Processing ", input_file))
   
@@ -794,65 +794,45 @@ TLSLeAF<-function(input_file,
   
   # param<-get_beta(LAD_lim$a)
  
+  
+  # TLSLeAF.dat<-new("TLSLeAF",
+  #                  parameters=data.frame(c(file=input_file,
+  #                                          center,
+  #                                          scatterLim=85,
+  #                                          SS=0.02,
+  #                                          scales=c(0.1,0.5,0.75),
+  #                                          voxRes=voxRes,
+  #                                          superDF=TRUE)),
+  #                  dat=as.data.frame(dat.class),
+  #                  voxels=as.data.frame(voxels),
+  #                  LAD=LAD,
+  #                  Beta_parameters=param,
+  #                  beta=beta,
+  #                  G=data.frame(inc_bin=1, G_p=1,assumption="",density=""))
+  
+  # remove(dat)
+  # remove(dat.class)
+  # remove(voxels)
+  # remove(LAD)
+  # gc()
+  
+  # G<-NULL
+  
   G_calculations(dat=class.file.name,
                  LAD=gsub(".asc", "_LAD.txt",class.file.name),
                  voxels=gsub(".asc", "_voxels.asc",class.file.name))
-  
-  
-  if (superDF){
-    
-    dat.class<-fread(class.file.name)
-    LAD<-fread(gsub(".asc", "_LAD.txt",class.file.name))
-    voxels<-fread(gsub(".asc", "_voxels.asc",class.file.name))
-    G<-fread(gsub("angles_class_voxels.asc", "G_function.txt",gsub(".asc", "_voxels.asc",class.file.name)))
-    
-    # get_beta<-function(x){
-    m<-NULL
-    print("Fit Beta distribution to LAD...")
-    # if (nrow(LAD_lim)>1){
-    m <- fitdistrplus::fitdist(as.numeric(LAD$a)/90, 'beta', method='mle')
-    
-    # Get alpha and beta parametrs
-    alpha0 <- m$estimate[1] # parameter 1
-    beta0 <- m$estimate[2] # parameter 2
-    beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01),
-                                                     alpha0,beta0))
-    param<-data.frame(alpha0,beta0)
-    
-    TLSLeAF.dat<-new("TLSLeAF",
-                     parameters=data.frame(c(file=input_file,
-                                             center,
-                                             scatterLim=85,
-                                             SS=0.02,
-                                             scales=c(0.1,0.5,0.75),
-                                             voxRes=voxRes,
-                                             superDF=TRUE)),
-                     dat=as.data.frame(dat.class),
-                     voxels=as.data.frame(voxels),
-                     LAD=LAD,
-                     Beta_parameters=param,
-                     beta=beta,
-                     G=G)
-    
-    # remove(dat)
-    remove(dat.class)
-    remove(voxels)
-    remove(LAD)
-    gc()
-  }
-  
-
-  remove(G)
+  # 
+  # while(is.null(G)) Sys.sleep(1) 
+  # 
+  # TLSLeAF.dat@G<-G
+  # 
+  # remove(G)
   
   if(clean){
     clean.temp(output_file,c2c.file, clean=TRUE)
   }
  
-  # return(TLSLeAF.dat)
-  if(superDF) return(TLSLeAF.dat)
-  
-  plot(density(TLSLeAF.dat@LAD$a), main="LAD")
-  plot(TLSLeAF.dat@G[,1:2], main="G-functions")
+  # if(superDF) return(TLSLeAF.dat)
   
 }
 
@@ -1540,9 +1520,9 @@ G_calculations<-function(dat,
   
   G_ls<-list()
   if(file.exists(dat)){
-    # dat<-NULL
+    dat<-NULL
     gc()
-    dat<-fread(dat)
+    dat<-fread(dat, sep=" ")
     dat<-dat[dat$class==0,]
     
     if(nrow(dat)>0){
@@ -1654,7 +1634,7 @@ G_calculations<-function(dat,
   }
   
   if(file.exists(voxels)){
-    dat<-fread(voxels)
+    dat<-read.csv(voxels, sep =" ")
     if(nrow(dat)>0){
       
       dat$inc<-RZA(dat[,1:3], deg = TRUE)
