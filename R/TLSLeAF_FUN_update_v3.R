@@ -506,6 +506,9 @@ TLSLeAF<-function(input_file,
   
   # keep.vars<-ls()
   
+  setDTthreads(threads = 1)
+  # getDTthreads(verbose=TRUE)
+  
   #names of output files
   output_file = gsub(".ptx",".asc", input_file)
   angle.file.name<-gsub(".ptx","_angles.asc", input_file)
@@ -616,31 +619,31 @@ TLSLeAF<-function(input_file,
   # while(!file.exists(gsub(".asc", paste("_Beta_distribution_alpha_",
   #                                       round(param[1],2),"_beta_",round(param[2],2),
   #                                       ".txt", sep=""),class.file.name))) Sys.sleep(5)
-
+  
   if (superDF){
-
+    
     dat.class<-LAD<-voxels<-G<-m<-beta<-NULL
-
+    
     dat.class<-fread(class.file.name)
     LAD<-fread(gsub(".asc", "_LAD.txt",class.file.name))
     voxels<-fread(gsub(".asc", "_voxels.asc",class.file.name))
     G<-fread(gsub("angles_class_voxels.asc", "G_function.txt",gsub(".asc", "_voxels.asc",class.file.name)))
-
+    
     # get_beta<-function(x){
     m<-NULL
     print("Fit Beta distribution to LAD...")
     # if (nrow(LAD_lim)>1){
     m <- fitdistrplus::fitdist(as.numeric(LAD$a)/90, 'beta', method='mle')
-
+    
     # Get alpha and beta parametrs
     alpha0 <- m$estimate[1] # parameter 1
     beta0 <- m$estimate[2] # parameter 2
     beta<-data.frame(a= seq(0.01,0.98, 0.01),y=dbeta(seq(0.01,0.98, 0.01),
                                                      alpha0,beta0))
     param<-data.frame(alpha0,beta0)
-
+    
     print("Finalizing TLSLeAF object...")
-
+    
     TLSLeAF.dat<-new("TLSLeAF",
                      parameters=data.frame(c(file=input_file,
                                              center,
@@ -655,19 +658,21 @@ TLSLeAF<-function(input_file,
                      Beta_parameters=param,
                      beta=beta,
                      G=G)
-
+    
     # remove(dat)
     remove(dat.class)
     remove(voxels)
     remove(LAD)
     gc()
     return(TLSLeAF.dat)
-    
-    if(clean){
-      clean.temp(output_file,c2c.file, clean=TRUE)
-    }
-    
+  }
+  
+  if(clean){
+    clean.temp(output_file,c2c.file, clean=TRUE)
+  }
+  
 }
+
 
 TLSLeAF.class<-setClass("TLSLeAF",representation=representation(
   parameters = "data.frame",
