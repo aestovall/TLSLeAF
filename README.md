@@ -5,6 +5,8 @@ Algorithms described in "Automatic leaf angle estimates from single-scan terrest
 
 TLSLeAF is based in the R programming language and takes advantage of CloudCompare commandline tools. 
 
+To aid in setting up your system to work with TLSLeAF you can download an example ptx file [here](https://drive.google.com/file/d/1Ov7vWFr9DxS59xYAPCWN9JeRHHdD3lP9/view?usp=sharing).
+
 ## EDIT THE SETUP FILE FOR YOUR SYSTEM
 
 Make sure the setup file is correct and save. The most important step is to have Cloud Compare installed and add the executable path into the setup file.
