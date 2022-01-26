@@ -119,7 +119,7 @@ library(fitdistrplus)
 rf_model<-readRDS("leaf_wood_class_RF.rds")
 
 #load TLSLeAF functions
-source('R/TLSLeAF_FUN.R')
+# source('R/TLSLeAF_FUN.R')
 
 # create directories
 if(!dir.exists("input")) dir.create("input")

@@ -3,15 +3,17 @@
 #Make sure the setup file is correct and save
 # The most important step is to have Cloud Compare installed
 # and add the executable into the setup file
-file.edit('R/000_setup_windows.R')
+file.edit('R/000_setup.R')
 
 # Run the setup file
-source('R/000_setup_windows.R')
+source('R/000_setup.R')
 
 #read the randomForest leaf/wood classification model
 rf_model<-readRDS("leaf_wood_class_RF.rds")
 
 ###input file ####
+files<-list.files("input", full.names = TRUE)
+i<-1
 input_file = files[i]
 print(input_file)
 
@@ -21,7 +23,7 @@ colnames(center)<-c("x","y","z")
 
 #Run TLSLeAF
 TLSLeAF.df<-TLSLeAF(input_file,
-                    overwrite=FALSE,
+                    overwrite=TRUE,
                     center,
                     scatterLim=80,
                     SS=0.02,
@@ -32,3 +34,7 @@ TLSLeAF.df<-TLSLeAF(input_file,
                     minVoxDensity=5,
                     superDF=TRUE,
                     clean=TRUE)
+
+
+
+

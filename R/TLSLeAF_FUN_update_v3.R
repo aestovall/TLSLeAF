@@ -117,12 +117,14 @@ normalize_topography<-function(x, res = 5){
   
   las<-clip_polygon(las, topo.las.p@polygons[[1]]@Polygons[[1]]@coords[,1], topo.las.p@polygons[[1]]@Polygons[[1]]@coords[,2])
   
+  # plot(las)
   las<- las - topo.las.r
+  # plot(las)
   
   slope<-terrain(topo, opt = "slope", unit = "degrees", neighbors = 8)
+  # plot(slope)
   
   topo[is.na(slope)]<-NA
-  
   topo.p<-topo
   topo.p[!is.na(topo.p)]<-1
   
@@ -131,8 +133,17 @@ normalize_topography<-function(x, res = 5){
   
   poly.id<-length(topo.las.p@polygons[[1]]@Polygons)
   
-  las<-clip_polygon(las, topo.las.p@polygons[[1]]@Polygons[[poly.id]]@coords[,1], topo.las.p@polygons[[1]]@Polygons[[poly.id]]@coords[,2])
+  topo.las.p@polygons[[1]]@Polygons
   
+  a.ls<-c(do.call(rbind, lapply(1:poly.id, function(x){
+    area.sub<-topo.las.p@polygons[[1]]@Polygons[[x]]
+    return(area.sub@area)
+  })))
+  
+  max.poly.id<-(1:poly.id)[max(a.ls)==a.ls]
+  
+  las<-clip_polygon(las, topo.las.p@polygons[[1]]@Polygons[[max.poly.id]]@coords[,1], topo.las.p@polygons[[1]]@Polygons[[max.poly.id]]@coords[,2])
+  # plot(las)
   return(las@data)
   
   # remove(las)
@@ -523,6 +534,7 @@ TLSLeAF<-function(input_file,
   print("Done")
   
   while(!file.exists(output_file)) Sys.sleep(10)
+  while(file.size(output_file)<file.size(input_file)) Sys.sleep(10)
   
   print("Calculate scattering angle and leaf angle...")
   #Calculate scattering angle and leaf angle
@@ -566,9 +578,15 @@ TLSLeAF<-function(input_file,
   print("Done")
   
   while(!file.exists(c2c.file)) Sys.sleep(10)
+  while(!(file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
+          file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
+          file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file)))) Sys.sleep(10)
   
-  if(file.exists(c2c.file)&
-     !file.exists(gsub(".asc","_rf_prep.asc",c2c.file))) {
+  if((file.exists(gsub(".asc","_0_10_NORM.asc",c2c.file))&
+      file.exists(gsub(".asc","_0_50_NORM.asc",c2c.file))&
+      file.exists(gsub(".asc","_0_75_NORM.asc",c2c.file)))&
+     !file.exists(gsub(".asc","_rf_prep.asc",c2c.file))|
+     overwrite) {
     
     print("Prepping for leaf and wood classification...")
     rfPrep(c2c.file)
@@ -579,7 +597,8 @@ TLSLeAF<-function(input_file,
   while(!file.exists(gsub(".asc","_rf_prep.asc",c2c.file))) Sys.sleep(10)
   
   if(!file.exists(class.file.name)&
-     file.exists(gsub(".asc","_rf_prep.asc",c2c.file))) {
+     file.exists(gsub(".asc","_rf_prep.asc",c2c.file))|
+     overwrite) {
     
     print("Classifying leaf and wood points...")
     rf_predict(c2c.file=c2c.file,
