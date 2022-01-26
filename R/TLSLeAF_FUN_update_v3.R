@@ -55,7 +55,7 @@ RZA<-function (dat, deg = FALSE){
   
 }
 
-scatter<-function(dat){
+scatter<-function(dat, cols_num){
   my.dt<-NULL
   # time<-Sys.time()
   # dat<-cbind(dat, )
@@ -64,7 +64,7 @@ scatter<-function(dat){
   dat<-cbind(dat,dat.add)
   remove(dat.add)
   
-  dat$dot<-geometry::dot(dat[,12:14],dat[,c('nX','nY','nZ')],d=2)
+  dat$dot<-geometry::dot(dat[,cols_num+1:3],dat[,c('nX','nY','nZ')],d=2)
   my.dt <- as.data.table(cbind(abs(dat$dot),1))
   dat$dot<-my.dt[,row.min:=pmin(V1,V2)]$row.min
   return(acos(dat$dot) * (180/pi))
@@ -224,23 +224,32 @@ normalCalc<-function(input_file){
 }
 
 
-readTLSnorms<-function(output_file){
+readTLSnorms<-function(output_file, cols_num){
   
   # dat<-data.table::fread(output_file, header = FALSE)
 
-dat<-vroom(output_file, delim = " ",
-           col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"),
-           # col_types= cols(),
-           col_types= c(X='d',Y='d',Z='d', R='i',G='i',B='i',I='d',
-                        nX='d',nY='d',nZ='d'),
-           progress=FALSE)
+if(cols_num==7){
+  dat<-vroom(output_file, delim = " ",
+             col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"),
+             # col_types= cols(),
+             col_types= c(X='d',Y='d',Z='d', R='i',G='i',B='i',I='d',
+                          nX='d',nY='d',nZ='d'),
+             progress=FALSE)
+} else {
+  dat<-vroom(output_file, delim = " ",
+             col_names = c("X","Y","Z","I","nX","nY","nZ"),
+             # col_types= cols(),
+             col_types= c(X='d',Y='d',Z='d',I='d',
+                          nX='d',nY='d',nZ='d'),
+             progress=FALSE)
+}
 # colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
 
 return(dat)
 
 }
 
-angleCalc<-function(dat, center, scatterLim=85){
+angleCalc<-function(dat, center, scatterLim=85, cols_num){
   #column naming
   # dat<-dat.out<-NULL
   # dat<-data.table::fread(output_file, header = FALSE)
@@ -264,13 +273,13 @@ angleCalc<-function(dat, center, scatterLim=85){
   dat$inc<-RZA(dat[,1:3])
   
   # estimate scattering angle and filter, removing steep angles
-  dat$scatter<-scatter(dat)
+  dat$scatter<-scatter(dat, cols_num)
   dat<-dat[dat$scatter<=scatterLim,]
   dat<-na.omit(dat)
   
   #Convert normals to leaf orientation and leaf angle
   dat.out<-cbind(dat[,1:3],
-                 dip=ConvertNormalToDipAndDipDir(dat[,8:10])[,2])
+                 dip=ConvertNormalToDipAndDipDir(dat[,c('nX','nY','nZ')])[,2])
   
   gc()
   
@@ -440,7 +449,7 @@ voxel_beta_fit<-function(class.file.name,
   dat.class<-NULL
   print("Correct topography...")
   #Correct topography and calculate the LAD and vertical LAD
-  if(correct.topography) dat.class<-normalize_topography(dat.class.in) else dat.class<-dat.class.in$Z
+  if(correct.topography) dat.class<-normalize_topography(dat.class.in) else dat.class<-dat.class.in
   print("Done")
   # fwrite(dat.class,  file = gsub(".asc", "_topo_correct.asc",class.file.name),
   #        sep = " ", row.names = FALSE)
@@ -448,7 +457,10 @@ voxel_beta_fit<-function(class.file.name,
   
   print("Voxelize angle estimates...")
   # leaf angle voxelation and density normalization
-  voxels<-LAvoxel(na.omit(dat.class[dat.class$Z>1,]), voxRes)
+  
+  if(correct.topography) dat.class.ag<- dat.class[dat.class$Z>1,] else dat.class.ag<-dat.class
+  
+  voxels<-LAvoxel(na.omit(dat.class.ag), voxRes)
   
   voxels<-voxels[voxels$n>quantile(voxels$n,0.01),]
   voxels<-voxels[voxels$n>minVoxDensity,]
@@ -527,6 +539,8 @@ TLSLeAF<-function(input_file,
   class.file.name<-gsub(".ptx","_angles_class.asc", input_file)
   gc()
   
+  cols_num<-length(fread(input_file, skip=11, nrows=1, header=FALSE))
+  
   print("Calculate normals for gridded TLS point cloud...")
   #Calculate normals for gridded TLS point cloud
   if(!file.exists(output_file)|
@@ -545,11 +559,12 @@ TLSLeAF<-function(input_file,
     # remove(dat)
     # gc()
     
-    dat<-readTLSnorms(output_file)
+    dat<-readTLSnorms(output_file, cols_num)
     
     dat.angle<-angleCalc(dat,
                          center,
-                         scatterLim)
+                         scatterLim,
+                         cols_num)
     
     fwrite(dat.angle, file = angle.file.name, 
            sep = " ", row.names = FALSE)
