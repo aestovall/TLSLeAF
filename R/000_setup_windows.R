@@ -35,8 +35,8 @@
 
 #### SETUP CloudCompare ####
 #What is your operating system?
-#OS<-"mac" 
-OS<-"windows" 
+# OS<-"mac"
+OS<-"windows"
 
 #Is CloudCompare already in the PATH?
 PATH = FALSE
@@ -66,15 +66,14 @@ library(data.table)
 library(lidR)
 # install.packages('raster')
 library(raster)
+library(vroom)
 library(geometry)
 library(ggplot2)
 library(randomForest)
 library(fitdistrplus)
-library(vroom)
 
 #load the randomForest model
 rf_model<-readRDS("leaf_wood_class_RF.rds")
-rf_model_path<-"leaf_wood_class_RF.rds"
 
 #load TLSLeAF functions
 source('R/TLSLeAF_FUN_update_v3.R')
@@ -87,5 +86,4 @@ if(!dir.exists("figures")) dir.create("figures")
 # Add the path to your cloud compare executable
 if(PATH & OS=='mac') cloudcompare<-'cloudcompare' else cloudcompare <- cc_dir
 if(PATH & OS!='mac') cloudcompare<-'cloudcompare' else cloudcompare <- cc_dir
-if(OS=="mac") run<-function(x) rstudioapi::terminalExecute(x) else run<-function(x) shell(x, intern=FALSE, wait=TRUE)
-
+if(OS=="mac") run<-function(x) rstudioapi::terminalExecute(x) else run<-function(x) shell(x, intern = TRUE)

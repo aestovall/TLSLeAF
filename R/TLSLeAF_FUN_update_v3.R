@@ -534,7 +534,8 @@ TLSLeAF<-function(input_file,
                   voxRes = 0.1,
                   minVoxDensity=5,
                   superDF=TRUE,
-                  clean=TRUE,...){
+                  clean=TRUE,
+                  OS='mac',...){
   
   # keep.vars<-ls()
   
@@ -558,11 +559,15 @@ TLSLeAF<-function(input_file,
   
   while(!file.exists(output_file)) Sys.sleep(10)
   while(file.size(output_file)<file.size(input_file)) Sys.sleep(10)
-  while((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0)) Sys.sleep(1)
   
-  if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-    rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
+  if(OS=='mac'){
+    while((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+      rstudioapi::terminalBusy(rstudioapi::terminalList())])>0)) Sys.sleep(1)
+    
+    if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+      rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
+    
+  }
   
   print("Calculate scattering angle and leaf angle...")
   #Calculate scattering angle and leaf angle
@@ -623,8 +628,10 @@ TLSLeAF<-function(input_file,
   
   while(!file.exists(gsub(".asc","_rf_prep.asc",c2c.file))) Sys.sleep(10)
   
-  if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-    rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
+  if(OS=='mac'){
+    if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+      rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
+  }
   
   if(!file.exists(class.file.name)&
      file.exists(gsub(".asc","_rf_prep.asc",c2c.file))|
