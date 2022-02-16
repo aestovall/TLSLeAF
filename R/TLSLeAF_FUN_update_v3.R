@@ -224,6 +224,15 @@ normalCalc<-function(input_file){
 }
 
 
+readTLS<-function(output_file){
+  
+  dat<-data.table::fread(output_file, skip= 11, header = FALSE)
+  colnames(dat)[1:7]<-c("X","Y","Z", "R","G","B","I")
+  
+  return(dat)
+  
+}
+
 readTLSnorms<-function(output_file, cols_num){
   
   # dat<-data.table::fread(output_file, header = FALSE)
@@ -549,12 +558,15 @@ TLSLeAF<-function(input_file,
   
   while(!file.exists(output_file)) Sys.sleep(10)
   while(file.size(output_file)<file.size(input_file)) Sys.sleep(10)
+  while((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+    rstudioapi::terminalBusy(rstudioapi::terminalList())])>0)) Sys.sleep(1)
+  
+  if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+    rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
   
   print("Calculate scattering angle and leaf angle...")
   #Calculate scattering angle and leaf angle
-  if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-    rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)&
-    (!file.exists(angle.file.name)|
+  if((!file.exists(angle.file.name)|
      overwrite)){
     # remove(dat)
     # gc()
@@ -610,6 +622,9 @@ TLSLeAF<-function(input_file,
   }
   
   while(!file.exists(gsub(".asc","_rf_prep.asc",c2c.file))) Sys.sleep(10)
+  
+  if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+    rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
   
   if(!file.exists(class.file.name)&
      file.exists(gsub(".asc","_rf_prep.asc",c2c.file))|

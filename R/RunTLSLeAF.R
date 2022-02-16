@@ -29,7 +29,7 @@ TLSLeAF.df<-TLSLeAF(input_file,
                     SS=0.02,
                     scales=c(0.1,0.5,0.75),
                     rf_model=rf_model,
-                    correct.topography = FALSE,
+                    correct.topography = TRUE,
                     voxRes=0.1,
                     minVoxDensity=5,
                     superDF=TRUE,
@@ -45,3 +45,4 @@ ggplot(TLSLeAF.df@G,
        aes(inc_bin, G_p, group=assumption, color=assumption))+
   facet_wrap(~density)+
   geom_line()
+
