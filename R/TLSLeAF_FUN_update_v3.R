@@ -216,11 +216,17 @@ normalCalc<-function(input_file){
                   "-COMPUTE_NORMALS",
                   "-O", input_file, #open the subsampled file
                   # "-NORMALS_TO_DIP",
-                  "-SAVE_CLOUDS", "FILE", gsub(".ptx",".asc",input_file),
+                  "-SAVE_CLOUDS", 
+                  # "FILE", gsub(".ptx",".asc",input_file),
                   "-CLEAR",
                   sep = " "))
   
   while (term==1) sys.sleep(10)
+  
+  dir.create( substr(input_file, 0,nchar(input_file)-4))
+  file.move(list.files("input", pattern = gsub("input/","",substr(input_file, 0,nchar(input_file)-4)), full.names = TRUE)[-1],
+            substr(input_file, 0,nchar(input_file)-4))
+  
 }
 
 
@@ -717,7 +723,7 @@ TLSLeAF<-function(input_file,
   }
   
   if(clean){
-    clean.temp(output_file,c2c.file, clean=TRUE)
+    clean.temp(output_file, c2c.file, clean=TRUE)
   }
   
 }
@@ -757,7 +763,7 @@ pgapF<-function (tls.scan.sub, row_res, col_res, z_res) {
   
   pgap <- NULL
   for (i in 1:length(list)) {
-    pgap[i] <- 1-(length(subset(tls.scan.sub$z, tls.scan.sub$z<list[i])))/total
+    pgap[i] <- 1-(length(subset(tls.scan.sub$Z, tls.scan.sub$Z<list[i])))/total
   }
   pgap<- (1-max(pgap))+pgap
   return(pgap)
