@@ -1,4 +1,3 @@
-
 ConvertNormalToDipAndDipDir<-function(x) {
   
   Nsign<-dipDir_rad<-dip_rad<-dip_deg<-NULL
@@ -1212,7 +1211,7 @@ G_calculations<-function(dat,
   gc()
   # return(do.call(rbind, G_ls))
 }
-=======
+
 ConvertNormalToDipAndDipDir<-function(x) {
   
   Nsign<-dipDir_rad<-dip_rad<-dip_deg<-NULL
