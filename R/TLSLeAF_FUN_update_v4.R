@@ -2427,4 +2427,4 @@ G_calculations<-function(dat,
   gc()
   # return(do.call(rbind, G_ls))
 }
->>>>>>> 6fc7c3de4a83b680d4fb6436e987c5fe19a0b221
+
