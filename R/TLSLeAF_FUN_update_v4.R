@@ -1778,8 +1778,8 @@ TLSLeAF<-function(input_file,
     while((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
       rstudioapi::terminalBusy(rstudioapi::terminalList())])>0)) Sys.sleep(1)
     
-    if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-      rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
+    # if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+    #   rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
     
   }
   
@@ -1978,7 +1978,7 @@ pgapF<-function (tls.scan.sub, row_res, col_res, z_res) {
   
   pgap <- NULL
   for (i in 1:length(list)) {
-    pgap[i] <- 1-(length(subset(tls.scan.sub$z, tls.scan.sub$z<list[i])))/total
+    pgap[i] <- 1-(length(subset(tls.scan.sub$Z, tls.scan.sub$Z<list[i])))/total
   }
   pgap<- (1-max(pgap))+pgap
   return(pgap)
