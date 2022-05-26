@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 ConvertNormalToDipAndDipDir<-function(x) {
   
   Nsign<-dipDir_rad<-dip_rad<-dip_deg<-NULL
