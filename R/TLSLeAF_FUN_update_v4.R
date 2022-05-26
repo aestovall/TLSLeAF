@@ -1775,6 +1775,7 @@ TLSLeAF<-function(input_file,
   while(file.size(output_file)<file.size(input_file)) Sys.sleep(10)
   
   if(OS=='mac'){
+    
     while((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
       rstudioapi::terminalBusy(rstudioapi::terminalList())])>0)) Sys.sleep(1)
     
@@ -1842,10 +1843,10 @@ TLSLeAF<-function(input_file,
   
   while(!file.exists(gsub(".asc","_rf_prep.asc",c2c.file))) Sys.sleep(10)
   
-  if(OS=='mac'){
-    if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
-      rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
-  }
+  # if(OS=='mac'){
+  #   if((length(rstudioapi::terminalBusy(rstudioapi::terminalList())[
+  #     rstudioapi::terminalBusy(rstudioapi::terminalList())])==0)) rstudioapi::terminalKill(rstudioapi::terminalBusy(rstudioapi::terminalList()))
+  # }
   
   if(!file.exists(class.file.name)&
      file.exists(gsub(".asc","_rf_prep.asc",c2c.file))|
