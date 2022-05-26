@@ -77,7 +77,7 @@ rf_model<-readRDS("leaf_wood_class_RF.rds")
 rf_model_path<-"leaf_wood_class_RF.rds"
 
 #load TLSLeAF functions
-source('R/TLSLeAF_FUN_update_v3.R')
+source('R/TLSLeAF_FUN_update_v4.R')
 
 #### SETUP CloudCompare ####
 #What is your operating system?
