@@ -64,7 +64,8 @@ scatter<-function(dat, cols_num){
   dat<-cbind(dat,dat.add)
   remove(dat.add)
   
-  dat$dot<-geometry::dot(dat[,cols_num+1:3],dat[,c('nX','nY','nZ')],d=2)
+  # dat$dot<-geometry::dot(dat[,cols_num+1:3],dat[,c('nX','nY','nZ')],d=2)
+  dat$dot<-geometry::dot(dat[,cols_num+5:7],dat[,c('nX','nY','nZ')],d=2)
   my.dt <- as.data.table(cbind(abs(dat$dot),1))
   dat$dot<-my.dt[,row.min:=pmin(V1,V2)]$row.min
   return(acos(dat$dot) * (180/pi))
@@ -201,33 +202,34 @@ sim_LAD<-function(x){
 #   )
 # }
 
-normalCalc<-function(input_file){
-  
-  print(paste("Input gridded point cloud and estimate normals"))
-  print(paste("Processing", input_file))
-  
-  term<-1
-  
-  term<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
-                  "-SILENT",
-                  "-C_EXPORT_FMT", "ASC", "-PREC", 6, #Set asc as export format
-                  "-NO_TIMESTAMP",
-                  "-AUTO_SAVE OFF",
-                  "-COMPUTE_NORMALS",
-                  "-O", input_file, #open the subsampled file
-                  # "-NORMALS_TO_DIP",
-                  "-SAVE_CLOUDS", 
-                  # "FILE", gsub(".ptx",".asc",input_file),
-                  "-CLEAR",
-                  sep = " "))
-  
-  while (term==1) sys.sleep(10)
-  
-  dir.create( substr(input_file, 0,nchar(input_file)-4))
-  file.move(list.files("input", pattern = gsub("input/","",substr(input_file, 0,nchar(input_file)-4)), full.names = TRUE)[-1],
-            substr(input_file, 0,nchar(input_file)-4))
-  
-}
+# normalCalc<-function(input_file){
+#   
+#   print(paste("Input gridded point cloud and estimate normals"))
+#   print(paste("Processing", input_file))
+#   
+#   term<-1
+#   
+#   term<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
+#                   "-SILENT",
+#                   "-C_EXPORT_FMT", "ASC", "-PREC", 6, #Set asc as export format
+#                   "-NO_TIMESTAMP",
+#                   "-AUTO_SAVE OFF",
+#                   "-COMPUTE_NORMALS",
+#                   "-O", "-GLOBAL_SHIFT AUTO", input_file, #open the subsampled file
+#                   "-DROP_GLOBAL_SHIFT",
+#                   # "-NORMALS_TO_DIP",
+#                   "-SAVE_CLOUDS", 
+#                   # "FILE", gsub(".ptx",".asc",input_file),
+#                   "-CLEAR",
+#                   sep = " "))
+#   
+#   while (term==1) sys.sleep(10)
+#   
+#   dir.create( substr(input_file, 0,nchar(input_file)-4))
+#   file.move(list.files("input", pattern = gsub("input/","",substr(input_file, 0,nchar(input_file)-4)), full.names = TRUE)[-1],
+#             substr(input_file, 0,nchar(input_file)-4))
+#   
+# }
 
 
 readTLS<-function(output_file){
@@ -242,26 +244,26 @@ readTLS<-function(output_file){
 readTLSnorms<-function(output_file, cols_num){
   
   # dat<-data.table::fread(output_file, header = FALSE)
-
-if(cols_num==7){
-  dat<-vroom(output_file, delim = " ",
-             col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"),
-             # col_types= cols(),
-             col_types= c(X='d',Y='d',Z='d', R='i',G='i',B='i',I='d',
-                          nX='d',nY='d',nZ='d'),
-             progress=FALSE)
-} else {
-  dat<-vroom(output_file, delim = " ",
-             col_names = c("X","Y","Z","I","nX","nY","nZ"),
-             # col_types= cols(),
-             col_types= c(X='d',Y='d',Z='d',I='d',
-                          nX='d',nY='d',nZ='d'),
-             progress=FALSE)
-}
-# colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
-
-return(dat)
-
+  
+  if(cols_num==7){
+    dat<-vroom(output_file, delim = " ",
+               col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"),
+               # col_types= cols(),
+               col_types= c(X='d',Y='d',Z='d', R='i',G='i',B='i',I='d',
+                            nX='d',nY='d',nZ='d'),
+               progress=FALSE)
+  } else {
+    dat<-vroom(output_file, delim = " ",
+               col_names = c("X","Y","Z","I","nX","nY","nZ"),
+               # col_types= cols(),
+               col_types= c(X='d',Y='d',Z='d',I='d',
+                            nX='d',nY='d',nZ='d'),
+               progress=FALSE)
+  }
+  # colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
+  
+  return(dat)
+  
 }
 
 angleCalc<-function(dat, center, scatterLim=85, cols_num){
@@ -531,6 +533,7 @@ voxel_beta_fit<-function(class.file.name,
 TLSLeAF<-function(input_file,
                   overwrite=TRUE,
                   center, 
+                  center_pts=FALSE,
                   scatterLim=85,
                   SS=0.02, 
                   scales=c(0.1,0.5,0.75),
@@ -559,7 +562,7 @@ TLSLeAF<-function(input_file,
   print("Calculate normals for gridded TLS point cloud...")
   #Calculate normals for gridded TLS point cloud
   if(!file.exists(output_file)|
-     overwrite) normalCalc(input_file)
+     overwrite) normalCalc(input_file,center_pts)
   print("Done")
   
   while(!file.exists(output_file)) Sys.sleep(10)
@@ -573,7 +576,7 @@ TLSLeAF<-function(input_file,
   print("Calculate scattering angle and leaf angle...")
   #Calculate scattering angle and leaf angle
   if((!file.exists(angle.file.name)|
-     overwrite)){
+      overwrite)){
     # remove(dat)
     # gc()
     
@@ -1269,22 +1272,22 @@ RZA<-function (dat, deg = FALSE){
   
 }
 
-scatter<-function(dat, cols_num){
-  my.dt<-NULL
-  # time<-Sys.time()
-  # dat<-cbind(dat, )
-  dat.add<-dat[,1:3]/sqrt(rowSums(dat[,1:3]^2))
-  colnames(dat.add)<-c("sX","sY","sZ")
-  dat<-cbind(dat,dat.add)
-  remove(dat.add)
-  
-  dat$dot<-geometry::dot(dat[,cols_num+1:3],dat[,c('nX','nY','nZ')],d=2)
-  my.dt <- as.data.table(cbind(abs(dat$dot),1))
-  dat$dot<-my.dt[,row.min:=pmin(V1,V2)]$row.min
-  return(acos(dat$dot) * (180/pi))
-  remove(my.dt)
-  # print(Sys.time()-time)#
-}
+# scatter<-function(dat, cols_num){
+#   my.dt<-NULL
+#   # time<-Sys.time()
+#   # dat<-cbind(dat, )
+#   dat.add<-dat[,1:3]/sqrt(rowSums(dat[,1:3]^2))
+#   colnames(dat.add)<-c("sX","sY","sZ")
+#   dat<-cbind(dat,dat.add)
+#   remove(dat.add)
+#   
+#   dat$dot<-geometry::dot(dat[,(cols_num+1:3)],dat[,c('nX','nY','nZ')],d=2)
+#   my.dt <- as.data.table(cbind(abs(dat$dot),1))
+#   dat$dot<-my.dt[,row.min:=pmin(V1,V2)]$row.min
+#   return(acos(dat$dot) * (180/pi))
+#   remove(my.dt)
+#   # print(Sys.time()-time)#
+# }
 
 normalize_topography<-function(x, res = 5){
   las<-r<-topo<-topo.df<-ground<-topo.las.r<-r.p<-topo.p<-slope<-poly.id<-NULL
@@ -1415,12 +1418,15 @@ sim_LAD<-function(x){
 #   )
 # }
 
-normalCalc<-function(input_file){
+normalCalc<-function(input_file, center_pts){
   
   print(paste("Input gridded point cloud and estimate normals"))
   print(paste("Processing", input_file))
   
   term<-1
+  
+  if(center_pts) center_option<-paste("-O", "-GLOBAL_SHIFT", paste(-c(t(center)), collapse = " ") , input_file, #open the subsampled file
+                                      "-DROP_GLOBAL_SHIFT") else center_option<-paste(c("-O", input_file), collapse=" ") 
   
   term<-run(paste(cloudcompare, # call Cloud Compare. The .exe file folder must be in the system PATH
                   "-SILENT",
@@ -1428,7 +1434,7 @@ normalCalc<-function(input_file){
                   "-NO_TIMESTAMP",
                   "-AUTO_SAVE OFF",
                   "-COMPUTE_NORMALS",
-                  "-O", input_file, #open the subsampled file
+                  center_option,
                   # "-NORMALS_TO_DIP",
                   "-SAVE_CLOUDS", "FILE", gsub(".ptx",".asc",input_file),
                   "-CLEAR",
@@ -1450,26 +1456,26 @@ readTLS<-function(output_file){
 readTLSnorms<-function(output_file, cols_num){
   
   # dat<-data.table::fread(output_file, header = FALSE)
-
-if(cols_num==7){
-  dat<-vroom(output_file, delim = " ",
-             col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"),
-             # col_types= cols(),
-             col_types= c(X='d',Y='d',Z='d', R='i',G='i',B='i',I='d',
-                          nX='d',nY='d',nZ='d'),
-             progress=FALSE)
-} else {
-  dat<-vroom(output_file, delim = " ",
-             col_names = c("X","Y","Z","I","nX","nY","nZ"),
-             # col_types= cols(),
-             col_types= c(X='d',Y='d',Z='d',I='d',
-                          nX='d',nY='d',nZ='d'),
-             progress=FALSE)
-}
-# colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
-
-return(dat)
-
+  
+  if(cols_num==7){
+    dat<-vroom(output_file, delim = " ",
+               col_names = c("X","Y","Z", "R","G","B","I","nX","nY","nZ"),
+               # col_types= cols(),
+               col_types= c(X='d',Y='d',Z='d', R='i',G='i',B='i',I='d',
+                            nX='d',nY='d',nZ='d'),
+               progress=FALSE)
+  } else {
+    dat<-vroom(output_file, delim = " ",
+               col_names = c("X","Y","Z","I","nX","nY","nZ"),
+               # col_types= cols(),
+               col_types= c(X='d',Y='d',Z='d',I='d',
+                            nX='d',nY='d',nZ='d'),
+               progress=FALSE)
+  }
+  # colnames(dat)[1:10]<-c("X","Y","Z", "R","G","B","I","nX","nY","nZ")
+  
+  return(dat)
+  
 }
 
 angleCalc<-function(dat, center, scatterLim=85, cols_num){
@@ -1497,6 +1503,9 @@ angleCalc<-function(dat, center, scatterLim=85, cols_num){
   
   # estimate scattering angle and filter, removing steep angles
   dat$scatter<-scatter(dat, cols_num)
+  
+  # fwrite(dat, gsub(".asc","_scatter.asc",angle.file.name))
+  
   dat<-dat[dat$scatter<=scatterLim,]
   dat<-na.omit(dat)
   
@@ -1739,6 +1748,7 @@ voxel_beta_fit<-function(class.file.name,
 TLSLeAF<-function(input_file,
                   overwrite=TRUE,
                   center, 
+                  center_pts=FALSE,
                   scatterLim=85,
                   SS=0.02, 
                   scales=c(0.1,0.5,0.75),
@@ -1768,7 +1778,7 @@ TLSLeAF<-function(input_file,
   print("Calculate normals for gridded TLS point cloud...")
   #Calculate normals for gridded TLS point cloud
   if(!file.exists(output_file)|
-     overwrite) normalCalc(input_file)
+     overwrite) normalCalc(input_file,center_pts)
   print("Done")
   
   while(!file.exists(output_file)) Sys.sleep(10)
@@ -1787,7 +1797,7 @@ TLSLeAF<-function(input_file,
   print("Calculate scattering angle and leaf angle...")
   #Calculate scattering angle and leaf angle
   if((!file.exists(angle.file.name)|
-     overwrite)){
+      overwrite)){
     # remove(dat)
     # gc()
     
